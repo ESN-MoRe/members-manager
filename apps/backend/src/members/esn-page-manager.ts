@@ -25,6 +25,13 @@ const SECTIONS = {
     rgbaShadow: 'rgba(236, 0, 140, 0.3)',
     badgeText: 'Active Member',
   },
+  MASCOTS: {
+    ariaLabel: 'Mascots',
+    color: '#ec008c', // Same magenta as Active Members
+    rgba: 'rgba(236, 0, 140, 0.12)',
+    rgbaShadow: 'rgba(236, 0, 140, 0.3)',
+    badgeText: 'Mascotte',
+  },
   ALUMNI: {
     ariaLabel: 'Alumni Network',
     color: '#6c757d', // Grigio
@@ -50,7 +57,12 @@ const ROLE_MAPPINGS: Record<string, string> = {
   // "Partnership Manager": "Partnership Manager"
 } as const;
 
-export type SectionType = 'BOARD' | 'SUPPORTERS' | 'ACTIVE' | 'ALUMNI';
+export type SectionType =
+  | 'BOARD'
+  | 'SUPPORTERS'
+  | 'ACTIVE'
+  | 'MASCOTS'
+  | 'ALUMNI';
 
 export interface MemberData {
   name: string;

@@ -1,3 +1,13 @@
+import {
+  AlertTriangle,
+  Camera,
+  GripVertical,
+  Loader,
+  LoaderCircle,
+  RefreshCw,
+  Save,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 // --- TYPES ---
@@ -7,13 +17,14 @@ interface MemberData {
   imageFilename?: string;
 }
 
-type SectionType = 'BOARD' | 'SUPPORTERS' | 'ACTIVE' | 'ALUMNI';
+type SectionType = 'BOARD' | 'SUPPORTERS' | 'ACTIVE' | 'MASCOTS' | 'ALUMNI';
 type SectionsState = Record<SectionType, MemberData[]>;
 
 const SECTION_LABELS: Record<SectionType, string> = {
   BOARD: 'Board',
   SUPPORTERS: 'Board Supporters',
   ACTIVE: 'Active Members',
+  MASCOTS: 'Mascots',
   ALUMNI: 'Alumni Network',
 };
 
@@ -21,6 +32,7 @@ const SECTION_COLORS: Record<SectionType, string> = {
   BOARD: '#00aeef',
   SUPPORTERS: '#f47b20',
   ACTIVE: '#ec008c',
+  MASCOTS: '#ec008c',
   ALUMNI: '#6c757d',
 };
 
@@ -28,11 +40,18 @@ const SECTION_BG: Record<SectionType, string> = {
   BOARD: 'rgba(0,174,239,0.08)',
   SUPPORTERS: 'rgba(244,123,32,0.08)',
   ACTIVE: 'rgba(236,0,140,0.08)',
+  MASCOTS: 'rgba(236,0,140,0.08)',
   ALUMNI: 'rgba(108,117,125,0.10)',
 };
 
 const _API_BASE = 'http://localhost:3000';
-const SECTION_KEYS: SectionType[] = ['BOARD', 'SUPPORTERS', 'ACTIVE', 'ALUMNI'];
+const SECTION_KEYS: SectionType[] = [
+  'BOARD',
+  'SUPPORTERS',
+  'ACTIVE',
+  'MASCOTS',
+  'ALUMNI',
+];
 
 const ROLE_SUGGESTIONS = [
   'Presidente',
@@ -147,7 +166,7 @@ function MemberModal({
             type="button"
             title="Chiudi"
           >
-            ✕
+            <X size={16} />
           </button>
         </div>
 
@@ -192,7 +211,7 @@ function MemberModal({
               onClick={() => fileRef.current?.click()}
               title="Carica foto"
             >
-              {uploading ? '...' : '📷'}
+              {uploading ? '...' : <Camera size={16} />}
             </button>
           </div>
         </div>
@@ -317,6 +336,7 @@ function MemberCard({
   return (
     <div
       draggable
+      onClick={onEdit}
       onDragStart={onDragStart}
       onDragOver={(e) => {
         e.preventDefault();
@@ -389,7 +409,7 @@ function MemberCard({
         </div>
       </div>
 
-      {/* Drag handle + edit */}
+      {/* Drag handle */}
       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
         <span
           style={{
@@ -400,16 +420,8 @@ function MemberCard({
           }}
           title="Trascina"
         >
-          ⠿
+          <GripVertical size={16} />
         </span>
-        <button
-          type="button"
-          style={styles.editBtn}
-          onClick={onEdit}
-          title="Modifica"
-        >
-          ✏️
-        </button>
       </div>
     </div>
   );
@@ -484,7 +496,7 @@ function SectionColumn({
           borderRadius: 8,
         }}
       >
-        {members.length === 0 && (
+        {members.length === 0 ? (
           <div
             style={{
               padding: '20px 0',
@@ -497,27 +509,31 @@ function SectionColumn({
             <br />
             Trascina qui o aggiungi.
           </div>
+        ) : (
+          // --- CHANGED ---
+          // Removed <Masonry> and used standard map
+          members.map((member, index) => (
+            <MemberCard
+              key={`${member.name}-${index}`} // Add a key
+              member={member}
+              sectionKey={sectionKey}
+              index={index}
+              onEdit={() => onEdit(index)}
+              onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                onDragStart(index);
+              }}
+              onDragOver={() => setDragOverIdx(index)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverIdx(null);
+                onDropOnCard(index);
+              }}
+              isDragOver={dragOverIdx === index}
+            />
+          ))
+          // ---------------
         )}
-        {members.map((m, i) => (
-          <MemberCard
-            key={`${m.name}-${i}`}
-            member={m}
-            sectionKey={sectionKey}
-            index={i}
-            onEdit={() => onEdit(i)}
-            onDragStart={(e) => {
-              e.dataTransfer.effectAllowed = 'move';
-              onDragStart(i);
-            }}
-            onDragOver={() => setDragOverIdx(i)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOverIdx(null);
-              onDropOnCard(i);
-            }}
-            isDragOver={dragOverIdx === i}
-          />
-        ))}
       </div>
     </div>
   );
@@ -534,6 +550,7 @@ function parseDrupalHtml(html: string): SectionsState {
     { key: 'BOARD' as SectionType, search: 'Board members' },
     { key: 'SUPPORTERS' as SectionType, search: 'Board Supporters' },
     { key: 'ACTIVE' as SectionType, search: 'Active Members' },
+    { key: 'MASCOTS' as SectionType, search: 'Mascots' },
     { key: 'ALUMNI' as SectionType, search: 'Alumni Network' },
   ];
 
@@ -709,7 +726,9 @@ export default function App() {
     return (
       <div style={styles.centered}>
         <div style={{ textAlign: 'center', color: '#c00' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>
+            <AlertTriangle size={40} />
+          </div>
           <div style={{ fontWeight: 600 }}>{error}</div>
           <div style={{ color: '#888', marginTop: 8, fontSize: 13 }}>
             Assicurati che il server Express sia in esecuzione.
@@ -740,6 +759,11 @@ export default function App() {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.logo}>
+          <img
+            src="https://more.esn.it/sites/esnmodena.it/files/web-it-mode-esn-colour-black.png"
+            alt="ESN Logo"
+            style={{ height: 40, marginRight: 10 }}
+          />
           <span style={styles.logoText}>ESN MoRe Team Manager</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -759,7 +783,17 @@ export default function App() {
             disabled={isStreaming}
             style={styles.secondaryBtn}
           >
-            {isStreaming ? 'Syncando...' : '🔄 Synca'}
+            {isStreaming ? (
+              // 'Syncando...'
+              <>
+                <div style={styles.spinnerSmall} />
+                Syncando...
+              </>
+            ) : (
+              <>
+                <RefreshCw size={16} /> Synca
+              </>
+            )}
           </button>
           <button
             type="button"
@@ -767,7 +801,13 @@ export default function App() {
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? 'Salvataggio...' : '💾 Salva HTML'}
+            {saving ? (
+              'Salvataggio...'
+            ) : (
+              <>
+                <Save size={16} /> Salva HTML
+              </>
+            )}
           </button>
         </div>
       </header>
@@ -859,13 +899,16 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   board: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: 16,
+    // --- CHANGED ---
+    // Switched from Grid to Column layout to allow "float up" behavior
+    display: 'block',
+    columnCount: 3, // Back to 3 columns
+    columnGap: 16,
+    // ---------------
+
     padding: '20px 20px',
     flex: 1,
-    alignItems: 'start',
-    overflowX: 'auto',
+    overflowX: 'auto', // Keep in case content is very wide
   },
   column: {
     background: '#fff',
@@ -873,6 +916,12 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 16,
     boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
     minHeight: 200,
+
+    // --- ADDED ---
+    // Prevents the section from splitting across columns and adds vertical spacing
+    breakInside: 'avoid',
+    marginBottom: 16,
+    // -------------
   },
   columnHeader: {
     display: 'flex',
@@ -881,11 +930,16 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 14,
   },
   cardList: {
+    // --- CHANGED ---
+    // Back to single column layout inside each section
     display: 'flex',
     flexDirection: 'column',
     gap: 8,
+    // ---------------
+
     padding: 4,
     transition: 'outline 0.15s',
+    borderRadius: 8,
   },
   card: {
     display: 'flex',
@@ -1021,6 +1075,15 @@ const styles: Record<string, React.CSSProperties> = {
     borderTop: '3px solid #00aeef',
     borderRadius: '50%',
     animation: 'spin 0.8s linear infinite',
+  },
+  spinnerSmall: {
+    width: 16,
+    height: 16,
+    border: '2px solid #e0e0e0',
+    borderTop: '2px solid #00aeef',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+    display: 'inline-block',
   },
   uploadBtn: {
     position: 'absolute',
