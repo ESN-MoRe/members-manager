@@ -39,7 +39,7 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [view, setView] = useState<'edit' | 'preview'>('edit');
   const [previewData, setPreviewData] = useState<PreviewData | null>(null); // New State
-  const [hasBackedUp, setHasBackedUp] = useState(false); // <--- NUOVO STATO
+  const [hasBackedUp, setHasBackedUp] = useState(false);
   const [imagesUploadedPendingSave, setImagesUploadedPendingSave] =
     useState(false);
 
@@ -127,7 +127,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error();
       setSaveMsg('✅ HTML aggiornato!');
-      setImagesUploadedPendingSave(false); // <--- RESET QUI
+      setImagesUploadedPendingSave(false);
     } catch {
       setSaveMsg('❌ Errore nel salvataggio.');
     } finally {
@@ -148,7 +148,7 @@ export default function App() {
   const handleGoToPreview = async () => {
     if (!sections) return;
     setLoading(true);
-    setHasBackedUp(false); // <--- RESET BACKUP FLAG
+    setHasBackedUp(false);
     try {
       const res = await fetch(`/v1/members`, {
         method: 'POST',
@@ -183,7 +183,7 @@ export default function App() {
     if (!previewData) return;
     const date = new Date().toISOString().split('T')[0];
     downloadHtmlFile(`backup_esn_members_${date}.html`, previewData.oldHtml);
-    setHasBackedUp(true); // <--- SBLOCCA IL TASTO NUOVO
+    setHasBackedUp(true);
   };
 
   const handleDownloadNew = () => {

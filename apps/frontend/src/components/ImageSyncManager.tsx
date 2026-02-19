@@ -12,7 +12,7 @@ import { imgUrl } from '../utils';
 interface ImageSyncManagerProps {
   localImages: { filename: string; dataUrl: string }[];
   toDelete: string[];
-  onUploadSuccess: () => void; // <--- Nuova prop
+  onUploadSuccess: () => void;
 }
 
 export default function ImageSyncManager({
@@ -51,7 +51,7 @@ export default function ImageSyncManager({
       ).length;
 
       if (successCount > 0) {
-        onUploadSuccess(); // <--- Avvisiamo App.tsx che ci sono file sul server
+        onUploadSuccess();
       }
 
       setUploadResult({

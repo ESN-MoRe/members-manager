@@ -26,7 +26,7 @@ async function bootstrap() {
   app.use(
     basicAuth({
       users,
-      challenge: true, // <-- Fondamentale: fa apparire il popup di login nel browser
+      challenge: true, // Fa apparire il popup di login nel browser
       realm: 'ESN Manager Autenticazione', // Il testo mostrato nel popup
     }),
   );
