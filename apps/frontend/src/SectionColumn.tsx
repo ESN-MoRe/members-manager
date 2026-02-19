@@ -93,9 +93,11 @@ const SectionColumn = ({
                 onDragStart(index);
               }}
               onDragOver={() => setDragOverIdx(index)}
+              onDragLeave={() => setDragOverIdx(null)}
+              onDragEnd={() => setTimeout(() => setDragOverIdx(null), 0)}
               onDrop={(e) => {
                 e.preventDefault();
-                setDragOverIdx(null);
+                setTimeout(() => setDragOverIdx(null), 0);
                 onDropOnCard(index);
               }}
               isDragOver={dragOverIdx === index}

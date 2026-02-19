@@ -1,10 +1,29 @@
-import { AlertTriangle, RefreshCw, Save } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  RefreshCw,
+  RotateCcw,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import DiffViewer from './components/DiffViewer'; // Import
+import ImageSyncManager from './components/ImageSyncManager'; // Import
 import MemberModal from './components/MemberModal';
+import WelcomeModal from './components/WelcomeModal';
 import { SECTION_COLORS, SECTION_KEYS } from './constants';
 import SectionColumn from './SectionColumn';
 import type { MemberData, SectionsState, SectionType } from './types';
 import { parseDrupalHtml } from './utils';
+
+// New Interface for Preview Data
+interface PreviewData {
+  oldHtml: string;
+  newHtml: string;
+  images: {
+    toUpload: string[];
+    toDelete: string[];
+  };
+}
 
 export default function App() {
   const [sections, setSections] = useState<SectionsState | null>(null);
@@ -14,6 +33,8 @@ export default function App() {
   const [error, setError] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [view, setView] = useState<'edit' | 'preview'>('edit');
+  const [previewData, setPreviewData] = useState<PreviewData | null>(null); // New State
 
   // Modal state
   const [editModal, setEditModal] = useState<{
@@ -94,6 +115,36 @@ export default function App() {
     }
   }
 
+  const handleReset = () => {
+    if (
+      window.confirm('Sei sicuro? Perderai tutte le modifiche non salvate.')
+    ) {
+      startStreaming();
+    }
+  };
+
+  // Modified function to switch to Preview Mode
+  const handleGoToPreview = async () => {
+    if (!sections) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/v1/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sections),
+      });
+      if (!res.ok) throw new Error();
+
+      const data = await res.json();
+      setPreviewData(data); // Save the full response including Diff and Images
+      setView('preview');
+    } catch (e) {
+      alert("Errore nella generazione dell'anteprima");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   function handleDragStart(section: SectionType, index: number) {
     dragSource.current = { section, index };
   }
@@ -102,14 +153,11 @@ export default function App() {
     const src = dragSource.current;
     if (!src || !sections) return;
     const next = { ...sections };
-
+    // Remove from source
     const [moved] = next[src.section].splice(src.index, 1);
-    if (src.section === targetSection && targetIndex > src.index) {
-      next[targetSection].splice(targetIndex, 0, moved);
-    } else {
-      next[targetSection].splice(targetIndex, 0, moved);
-    }
-    setSections({ ...next });
+    // Insert into target
+    next[targetSection].splice(targetIndex, 0, moved);
+    setSections(next);
     dragSource.current = null;
   }
 
@@ -171,6 +219,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
+      <WelcomeModal />
       {/* Floating Loading Indicator */}
       {loading && (
         <div className="fixed bottom-5 right-5 bg-white rounded-xl px-5 py-4 flex flex-col items-center shadow-lg z-150">
@@ -187,90 +236,176 @@ export default function App() {
             alt="ESN Logo"
             className="h-10 mr-2.5"
           />
-          <span className="font-bold text-lg text-gray-900 tracking-tight">
-            Manager membri
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {saveMsg && (
-            <span
-              className={`text-sm ${saveMsg.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}
-            >
-              {saveMsg}
+          <div className="flex flex-col">
+            <span className="font-bold text-sm text-gray-900 leading-none">
+              Manager membri
             </span>
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                type="button"
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${view === 'edit' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'} cursor-pointer`}
+                onClick={() => setView('edit')}
+              >
+                1. Modifica
+              </button>
+              <div className="w-4 h-px bg-gray-300" />
+              <button
+                type="button"
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${view === 'preview' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'} cursor-pointer`}
+                onClick={() => setView('preview')}
+              >
+                2. Anteprima
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {view === 'preview' && (
+            <button
+              type="button"
+              onClick={() => setView('edit')}
+              className="text-gray-500 hover:text-gray-700 font-semibold text-sm px-3 cursor-pointer"
+            >
+              Torna indietro
+            </button>
           )}
-          <button
-            type="button"
-            onClick={startStreaming}
-            disabled={isStreaming}
-            className="bg-gray-100 text-gray-700 border border-gray-300 rounded-lg px-3.5 py-2 flex items-center gap-2 font-semibold text-sm cursor-pointer"
-          >
-            {isStreaming ? (
-              // 'Syncando...'
-              <>
-                <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
-                Syncando...
-              </>
-            ) : (
-              <>
-                <RefreshCw size={16} /> Synca
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            className={`bg-blue-500 text-white flex items-center gap-2 border-none rounded-lg px-4.5 py-2 font-semibold text-sm cursor-pointer ${saving ? 'opacity-70' : ''}`}
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-gray-200 border-t-white rounded-full animate-spin mr-1" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <Save size={16} /> Salva HTML
-              </>
-            )}
-          </button>
+
+          {view === 'edit' && (
+            <>
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={isStreaming || loading}
+                className="text-red-500 scale-90 hover:bg-red-50 border border-transparent rounded-lg px-3.5 py-2 flex items-center gap-2 font-semibold text-sm cursor-pointer transition-colors"
+              >
+                <RotateCcw size={16} /> Reset
+              </button>
+
+              <button
+                type="button"
+                onClick={startStreaming}
+                disabled={isStreaming}
+                className="bg-gray-100 text-gray-700 border border-gray-300 rounded-lg px-3.5 py-2 flex items-center gap-2 font-semibold text-sm cursor-pointer"
+              >
+                {isStreaming ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+                    Syncando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={16} /> Synca
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 rounded-lg px-6 py-2 font-bold text-sm cursor-pointer transition-colors"
+                onClick={handleGoToPreview} // UPDATED
+              >
+                Continua <ArrowRight size={18} />
+              </button>
+            </>
+          )}
+
+          {view === 'preview' && (
+            <button
+              type="button"
+              className={`bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 rounded-lg px-6 py-2 font-bold text-sm cursor-pointer transition-colors ${saving ? 'opacity-70' : ''}`}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Salvataggio...' : 'Conferma e pubblica'}
+            </button>
+          )}
         </div>
       </header>
 
-      <div className="mx-5 mt-5 mb-0 bg-gray-800 rounded-lg overflow-hidden text-white font-mono text-xs shadow-lg">
-        <div className="px-3 py-2 bg-gray-700 border-b border-gray-600 text-gray-400 uppercase text-[10px] tracking-wider">
-          Log del server (da Puppeteer)
-        </div>
-        <div
-          className="px-3 py-3 max-h-37.5 overflow-y-auto flex flex-col gap-1"
-          ref={logBodyRef}
-        >
-          {logs.map((log, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static
-            <div key={i} className="leading-relaxed">
-              <span style={{ color: SECTION_COLORS.BOARD }}>&gt;</span> {log}
+      {view === 'edit' ? (
+        <>
+          {/* Log container */}
+          <div className="mx-5 mt-5 mb-0 bg-white rounded-lg overflow-hidden text-gray-900 font-mono text-xs shadow-lg">
+            <div className="px-3 py-2 bg-gray-100 border-b border-gray-300 text-gray-600 uppercase text-[10px] tracking-wider">
+              Log del server (da Puppeteer)
             </div>
-          ))}
-        </div>
-      </div>
+            <div
+              className="px-3 py-3 max-h-37.5 overflow-y-auto flex flex-col gap-1"
+              ref={logBodyRef}
+            >
+              {logs.map((log, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: static
+                <div key={i} className="leading-relaxed">
+                  <span style={{ color: SECTION_COLORS.BOARD }}>&gt;</span>{' '}
+                  {log}
+                </div>
+              ))}
+            </div>
+          </div>
 
-      {/* Kanban board */}
-      <main className="block columns-3 column-gap-4 px-5 py-5 flex-1 overflow-x-auto">
-        {sections &&
-          SECTION_KEYS.map((key) => (
-            <SectionColumn
-              key={key}
-              sectionKey={key}
-              members={sections[key]}
-              onEdit={(i) => setEditModal({ section: key, index: i })}
-              onAddNew={() => setEditModal({ section: key, index: null })}
-              onDragStart={(i) => handleDragStart(key, i)}
-              onDropOnCard={(ti) => handleDropOnCard(key, ti)}
-              onDropOnSection={() => handleDropOnSection(key)}
-              dragSource={dragSource.current}
-            />
-          ))}
-      </main>
+          {/* Kanban board */}
+          <main className="block columns-3 column-gap-4 px-5 py-5 flex-1 overflow-x-auto">
+            {sections &&
+              SECTION_KEYS.map((key) => (
+                <SectionColumn
+                  key={key}
+                  sectionKey={key}
+                  members={sections[key]}
+                  onEdit={(i) => setEditModal({ section: key, index: i })}
+                  onAddNew={() => setEditModal({ section: key, index: null })}
+                  onDragStart={(i) => handleDragStart(key, i)}
+                  onDropOnCard={(ti) => handleDropOnCard(key, ti)}
+                  onDropOnSection={() => handleDropOnSection(key)}
+                  dragSource={dragSource.current}
+                />
+              ))}
+          </main>
+        </>
+      ) : (
+        <main className="flex-1 p-6 md:p-10 flex flex-col items-center w-full max-w-[1600px] mx-auto">
+          {previewData ? (
+            <div className="w-full flex flex-col gap-6">
+              {/* 1. Image Management Section */}
+              <ImageSyncManager
+                toUpload={previewData.images.toUpload}
+                toDelete={previewData.images.toDelete}
+              />
+
+              {/* 2. HTML Diff Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                  <h2 className="text-lg font-bold text-gray-800">
+                    Differenze HTML
+                  </h2>
+                  <span className="text-xs text-gray-500 font-mono bg-gray-200 px-2 py-1 rounded">
+                    Sinistra: Drupal attuale | Destra: Nuova versione
+                  </span>
+                </div>
+                <div className="p-0">
+                  <DiffViewer
+                    oldCode={previewData.oldHtml}
+                    newCode={previewData.newHtml}
+                  />
+                </div>
+              </div>
+
+              {/* 3. Final Warning */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-yellow-800 text-sm flex gap-3 items-start mt-4">
+                <AlertTriangle className="shrink-0 mt-0.5" />
+                <div>
+                  <strong>Attenzione:</strong> Il salvataggio finale su Drupal
+                  non è automatico. Copia il codice dalla colonna di destra
+                  (Nuova versione) e incollalo manualmente su Drupal se
+                  necessario, oppure usa il metodo manuale. Questo tool
+                  automatizza solo le immagini.
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-gray-500">Caricamento anteprima...</div>
+          )}
+        </main>
+      )}
 
       {/* Modal */}
       {editModal && (

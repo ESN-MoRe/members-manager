@@ -1,24 +1,25 @@
+import { join } from 'node:path';
 import {
   Body,
   Controller,
   Get,
   Post,
-  UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { DrupalContentService } from '../drupal/drupal-content.service';
+import { DrupalImageService } from '../drupal/drupal-image.service';
 import { MemberData } from './esn-page-manager';
 import { MembersService } from './members.service';
 
 // Multer config for images
 const storage = diskStorage({
-  destination: './public/members-img', // Save to public folder
+  destination: './public/members-img',
   filename: (_req, file, cb) => {
-    // You might need to handle the filename from body if passed, or just use original
-    const name = file.originalname;
-    cb(null, name);
+    // Keep original name for consistency with Drupal upload logic
+    cb(null, file.originalname);
   },
 });
 
@@ -27,6 +28,7 @@ export class MembersController {
   constructor(
     private readonly membersService: MembersService,
     private readonly drupalService: DrupalContentService,
+    private readonly drupalImageService: DrupalImageService,
   ) {}
 
   // 1. Scrape Drupal -> Parse -> Return JSON
@@ -39,24 +41,92 @@ export class MembersController {
     return this.membersService.parseHtmlToJson(html);
   }
 
-  // 2. Receive JSON -> Generate HTML -> Return HTML String
+  // UPDATED: Now returns detailed diff info
   @Post()
   async previewHtml(@Body() newState: Record<string, MemberData[]>) {
-    // We need the original HTML structure to inject into.
-    // Ideally, cache this or fetch again. For now, let's fetch.
-    const html = await this.drupalService.getAboutUsContent();
+    // 1. Fetch Original
+    const oldHtml = await this.drupalService.getAboutUsContent();
 
-    const newHtml = this.membersService.generateHtmlFromJson(html, newState);
+    // 2. Generate New
+    const newHtml = this.membersService.generateHtmlFromJson(oldHtml, newState);
 
-    // Here you would usually save to Drupal.
-    // For now, return success or the HTML for preview
-    return { success: true, htmlPreview: newHtml };
+    // 3. Calculate Image Diff
+    // Extract all filenames from the newState (frontend state)
+    const newImageSet = new Set<string>();
+    Object.values(newState)
+      .flat()
+      .forEach((m) => {
+        if (m.imageFilename) newImageSet.add(m.imageFilename);
+      });
+
+    // Extract all filenames from the oldHtml (Drupal state)
+    // We reuse the parser logic quickly here or regex it
+    const oldJson = this.membersService.parseHtmlToJson(oldHtml);
+    const oldImageSet = new Set<string>();
+    Object.values(oldJson)
+      .flat()
+      .forEach((m) => {
+        if (m.imageFilename) oldImageSet.add(m.imageFilename);
+      });
+
+    // Calculate Diff
+    const toUpload = [...newImageSet].filter((x) => !oldImageSet.has(x));
+    const toDelete = [...oldImageSet].filter((x) => !newImageSet.has(x));
+
+    return {
+      success: true,
+      oldHtml,
+      newHtml,
+      images: {
+        toUpload,
+        toDelete,
+        totalNew: newImageSet.size,
+        totalOld: oldImageSet.size,
+      },
+    };
+  }
+
+  // NEW: Triggers the Puppeteer upload for specific files
+  @Post('deploy-images')
+  async deployImages(@Body() body: { filenames: string[] }) {
+    const { filenames } = body;
+    if (!filenames || filenames.length === 0)
+      return { message: 'No files to upload' };
+
+    // Construct file objects pointing to the local disk
+    const filesToUpload = filenames.map((name) => ({
+      originalname: name,
+      path: join(process.cwd(), 'public', 'members-img', name),
+    }));
+
+    // Reuse the logic!
+    const results = await this.drupalImageService.uploadImages(
+      filesToUpload,
+      (msg) => {
+        console.log(`[Deploy] ${msg}`);
+      },
+    );
+
+    return { results };
   }
 
   // 3. Image Upload
   @Post('upload')
-  @UseInterceptors(FileInterceptor('photo', { storage }))
-  uploadFile(@UploadedFile() file: Express.Multer.File) {
-    return { filename: file.filename };
+  @UseInterceptors(FilesInterceptor('photos', 10, { storage })) // Allow up to 10 files
+  async uploadFiles(@UploadedFiles() files: Array<Express.Multer.File>) {
+    if (!files || files.length === 0) {
+      return { message: 'No files provided' };
+    }
+
+    // Call the puppeteer service
+    // We can define a simple log callback to see progress in console
+    const results = await this.drupalImageService.uploadImages(files, (msg) => {
+      console.log(`[Upload Job] ${msg}`);
+    });
+
+    return {
+      message: 'Upload process completed',
+      results,
+    };
   }
 }

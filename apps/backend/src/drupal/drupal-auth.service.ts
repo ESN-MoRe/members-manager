@@ -11,6 +11,7 @@ export class DrupalAuthService implements OnModuleInit {
   private drupalUsername: string;
   private drupalPassword: string;
   private puppeteerExecutablePath: string | undefined;
+  private refreshPromise: Promise<string> | null = null;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -38,6 +39,8 @@ export class DrupalAuthService implements OnModuleInit {
    * Returns a valid cookie string for HTTP headers.
    * If cached and fresh, returns immediately.
    * If missing or expired, launches Puppeteer to login first.
+   * Uses a lock mechanism to prevent thundering herd when multiple
+   * concurrent requests need to refresh the token.
    */
   async getSessionCookie(onLog?: (msg: string) => void): Promise<string> {
     const now = Date.now();
@@ -47,10 +50,25 @@ export class DrupalAuthService implements OnModuleInit {
       return this.cachedCookie;
     }
 
+    // If a refresh is already in progress, wait for it instead of starting a new one
+    if (this.refreshPromise) {
+      onLog?.('Login already in progress, waiting for ongoing refresh...');
+      return this.refreshPromise;
+    }
+
+    // Start the refresh and store the promise to prevent concurrent refreshes
     onLog?.('Cookie missing or expired. Starting Puppeteer login...');
-    this.cachedCookie = await this.performPuppeteerLogin(onLog);
-    this.lastLoginTime = Date.now();
-    return this.cachedCookie;
+    this.refreshPromise = this.performPuppeteerLogin(onLog)
+      .then((cookie) => {
+        this.cachedCookie = cookie;
+        this.lastLoginTime = Date.now();
+        return cookie;
+      })
+      .finally(() => {
+        this.refreshPromise = null;
+      });
+
+    return this.refreshPromise;
   }
 
   private async performPuppeteerLogin(
@@ -74,7 +92,7 @@ export class DrupalAuthService implements OnModuleInit {
       });
 
       // Trigger Antibot
-      onLog?.('Bypassing antibot...');
+      onLog?.('I am really not a bot...');
       await page.mouse.move(100, 100);
       await page.keyboard.press('Tab');
 

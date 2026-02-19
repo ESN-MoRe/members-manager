@@ -11,6 +11,8 @@ interface CardProps {
   onEdit: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDragEnd: () => void;
   onDrop: (e: React.DragEvent) => void;
   isDragOver: boolean;
 }
@@ -21,6 +23,8 @@ const MemberCard = ({
   onEdit,
   onDragStart,
   onDragOver,
+  onDragLeave,
+  onDragEnd,
   onDrop,
   isDragOver,
 }: CardProps) => {
@@ -36,6 +40,8 @@ const MemberCard = ({
         e.preventDefault();
         onDragOver(e);
       }}
+      onDragLeave={onDragLeave}
+      onDragEnd={onDragEnd}
       onDrop={onDrop}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
