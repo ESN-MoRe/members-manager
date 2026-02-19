@@ -1,223 +1,11 @@
-import { AlertTriangle, Camera, RefreshCw, Save, X } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import {
-  ROLE_SUGGESTIONS,
-  SECTION_BG,
-  SECTION_COLORS,
-  SECTION_KEYS,
-} from './constants';
+import MemberModal from './components/MemberModal';
+import { SECTION_COLORS, SECTION_KEYS } from './constants';
 import SectionColumn from './SectionColumn';
 import type { MemberData, SectionsState, SectionType } from './types';
-import { imgUrl, initials, parseDrupalHtml } from './utils';
+import { parseDrupalHtml } from './utils';
 
-// --- TYPES ---
-
-// --- HELPERS ---
-
-// --- MODAL ---
-interface ModalProps {
-  member: MemberData | null;
-  sectionKey: SectionType;
-  onSave: (updated: MemberData) => void;
-  onClose: () => void;
-  onDelete: () => void;
-}
-
-function MemberModal({
-  member,
-  sectionKey,
-  onSave,
-  onClose,
-  onDelete,
-}: ModalProps) {
-  const [name, setName] = useState(member?.name ?? '');
-  const [role, setRole] = useState(member?.role ?? '');
-  const [imageFilename, setImageFilename] = useState(
-    member?.imageFilename ?? '',
-  );
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
-  const color = SECTION_COLORS[sectionKey];
-  const isNew = !member?.name;
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setUploadError('');
-    try {
-      const form = new FormData();
-      const safeName = name
-        ? `${name.toLowerCase().replace(/ /g, '_')}.${file.name.split('.').pop()}`
-        : file.name;
-      form.append('photo', file);
-      form.append('filename', safeName);
-      const res = await fetch(`/v1/upload`, { method: 'POST', body: form });
-      if (!res.ok) throw new Error('Upload fallito');
-      const data = await res.json();
-      setImageFilename(data.filename);
-    } catch (_err) {
-      setUploadError('Errore upload. Riprova.');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function handleSave() {
-    if (!name.trim()) return;
-    onSave({ name: name.trim(), role: role.trim(), imageFilename });
-  }
-
-  return (
-    <div
-      className="fixed inset-0 bg-black bg-opacity-35 z-200 flex items-center justify-center"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        className="bg-white rounded-2xl px-7 py-6 w-full max-w-md shadow-2xl"
-        style={{ borderTop: `4px solid ${color}` }}
-      >
-        <div className="flex items-center justify-between mb-4.5">
-          <h2 className="font-bold text-lg m-0" style={{ color }}>
-            {isNew ? 'Aggiungi membro' : 'Modifica membro'}
-          </h2>
-          <button
-            className="bg-none border-none text-lg cursor-pointer text-gray-500 leading-none"
-            onClick={onClose}
-            type="button"
-            title="Chiudi"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Preview avatar */}
-        <div className="flex justify-center mb-5">
-          <div className="relative">
-            {imageFilename ? (
-              <img
-                src={imgUrl(imageFilename)}
-                alt={name}
-                className="w-20 h-20 rounded-full object-cover block"
-                style={{ border: `3px solid ${color}` }}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            ) : (
-              <div
-                className="w-20 h-20 rounded-full object-cover block flex items-center justify-center text-2xl font-bold"
-                style={{
-                  background: SECTION_BG[sectionKey],
-                  border: `3px solid ${color}`,
-                  color,
-                }}
-              >
-                {initials(name) || '?'}
-              </div>
-            )}
-            <button
-              type="button"
-              className="absolute bottom-0 right-0 border-none rounded-full w-7 h-7 cursor-pointer text-sm flex items-center justify-center text-white"
-              style={{ background: color }}
-              onClick={() => fileRef.current?.click()}
-              title="Carica foto"
-            >
-              {uploading ? '...' : <Camera size={16} />}
-            </button>
-          </div>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleUpload}
-        />
-        {uploadError && (
-          <p className="text-red-600 text-center m-0 mb-3 text-sm">
-            {uploadError}
-          </p>
-        )}
-
-        <div className="mb-4">
-          <label
-            className="block text-sm font-semibold text-gray-600 mb-1.25"
-            htmlFor="fullname"
-          >
-            Nome completo
-          </label>
-          <input
-            id="fullname"
-            className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm outline-none box-border font-inherit"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="es. Mario Rossi"
-          />
-        </div>
-
-        <div className="mb-4">
-          <label
-            className="block text-sm font-semibold text-gray-600 mb-1.25"
-            htmlFor="role"
-          >
-            Ruolo
-          </label>
-          <input
-            id="role"
-            className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm outline-none box-border font-inherit"
-            list="roles-list"
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            placeholder="es. Presidente"
-          />
-          <datalist id="roles-list">
-            {ROLE_SUGGESTIONS.map((r) => (
-              <option key={r} value={r} />
-            ))}
-          </datalist>
-        </div>
-
-        {imageFilename && (
-          <p className="text-xs text-gray-500 m-0 mb-4">📎 {imageFilename}</p>
-        )}
-
-        <div className="flex gap-2 mt-5 items-center">
-          {!isNew && (
-            <button
-              type="button"
-              className="px-4 py-2 rounded-lg border-none font-semibold text-sm cursor-pointer bg-red-50 text-red-600 border border-red-200"
-              onClick={onDelete}
-            >
-              Rimuovi
-            </button>
-          )}
-          <div className="flex-1" />
-          <button
-            type="button"
-            className="px-4 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-700 font-semibold text-sm cursor-pointer"
-            onClick={onClose}
-          >
-            Annulla
-          </button>
-          <button
-            type="button"
-            className="px-4 py-2 rounded-lg border-none font-semibold text-sm cursor-pointer text-white"
-            style={{ background: color }}
-            onClick={handleSave}
-          >
-            {isNew ? 'Aggiungi' : 'Salva'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- MEMBER CARD ---
-
-// --- APP ---
 export default function App() {
   const [sections, setSections] = useState<SectionsState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -400,7 +188,7 @@ export default function App() {
             className="h-10 mr-2.5"
           />
           <span className="font-bold text-lg text-gray-900 tracking-tight">
-            ESN MoRe Team Manager
+            Manager membri
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -454,7 +242,7 @@ export default function App() {
           Log del server (da Puppeteer)
         </div>
         <div
-          className="px-3 py-3 max-h-[150px] overflow-y-auto flex flex-col gap-1"
+          className="px-3 py-3 max-h-37.5 overflow-y-auto flex flex-col gap-1"
           ref={logBodyRef}
         >
           {logs.map((log, i) => (

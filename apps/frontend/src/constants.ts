@@ -4,7 +4,7 @@ export const SECTION_LABELS: Record<SectionType, string> = {
   BOARD: 'Board',
   SUPPORTERS: 'Board Supporters',
   ACTIVE: 'Active Members',
-  MASCOTS: 'Mascots',
+  MASCOTS: 'Mascotte',
   ALUMNI: 'Alumni Network',
 };
 

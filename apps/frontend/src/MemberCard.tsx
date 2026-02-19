@@ -1,4 +1,4 @@
-import { GripVertical } from 'lucide-react';
+import { Edit, GripVertical } from 'lucide-react';
 import { useState } from 'react';
 import { SECTION_BG, SECTION_COLORS } from './constants';
 import type { MemberData, SectionType } from './types';
@@ -96,6 +96,12 @@ const MemberCard = ({
           title="Trascina"
         >
           <GripVertical size={16} />
+        </span>
+        <span
+          className="text-gray-400 cursor-pointer text-base py-0 px-0.5"
+          title="Modifica"
+        >
+          <Edit size={16} />
         </span>
       </div>
     </div>
