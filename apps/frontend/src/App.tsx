@@ -587,12 +587,13 @@ export default function App() {
   // Log container ref for auto-scroll
   const logBodyRef = useRef<HTMLDivElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: necessary to auto-scroll on new logs
   useEffect(() => {
     // Scroll log container to bottom when logs change
     if (logBodyRef.current) {
       logBodyRef.current.scrollTop = logBodyRef.current.scrollHeight;
     }
-  }, []);
+  }, [logs]);
 
   const startStreaming = () => {
     setLoading(true);
@@ -864,6 +865,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '20px 20px',
     flex: 1,
     alignItems: 'start',
+    overflowX: 'auto',
   },
   column: {
     background: '#fff',
