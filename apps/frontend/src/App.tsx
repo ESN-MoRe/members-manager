@@ -40,6 +40,8 @@ export default function App() {
   const [view, setView] = useState<'edit' | 'preview'>('edit');
   const [previewData, setPreviewData] = useState<PreviewData | null>(null); // New State
   const [hasBackedUp, setHasBackedUp] = useState(false); // <--- NUOVO STATO
+  const [imagesUploadedPendingSave, setImagesUploadedPendingSave] =
+    useState(false);
 
   // Modal state
   const [editModal, setEditModal] = useState<{
@@ -100,6 +102,19 @@ export default function App() {
     startStreaming();
   }, []);
 
+  // Intercetta la chiusura della pagina
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (imagesUploadedPendingSave) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [imagesUploadedPendingSave]);
+
   async function handleSave() {
     if (!sections) return;
     setSaving(true);
@@ -112,6 +127,7 @@ export default function App() {
       });
       if (!res.ok) throw new Error();
       setSaveMsg('✅ HTML aggiornato!');
+      setImagesUploadedPendingSave(false); // <--- RESET QUI
     } catch {
       setSaveMsg('❌ Errore nel salvataggio.');
     } finally {
@@ -452,6 +468,22 @@ export default function App() {
         <main className="flex-1 p-6 md:p-10 flex flex-col items-center w-full max-w-400 mx-auto">
           {previewData ? (
             <div className="w-full flex flex-col gap-6">
+              {imagesUploadedPendingSave && (
+                <div className="bg-red-50 border-l-4 border-red-500 rounded-r-xl p-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="p-1 bg-red-100 rounded-full text-red-600 shrink-0">
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-red-800 text-sm font-medium">
+                        ⚠️ Attenzione: hai caricato nuove immagini sul server. Se
+                        esci ora senza salvare l'HTML, rimarranno file
+                        inutilizzati su Drupal.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* --- ZONA DI SICUREZZA / DOWNLOAD --- */}
               <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-xl p-6 shadow-sm mb-2">
                 <div className="flex items-start gap-4">
@@ -541,6 +573,7 @@ export default function App() {
                     dataUrl: m.localImage,
                   }))}
                 toDelete={previewData.images.toDelete}
+                onUploadSuccess={() => setImagesUploadedPendingSave(true)}
               />
 
               {/* 2. HTML Diff Section */}
