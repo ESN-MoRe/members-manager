@@ -1,0 +1,17 @@
+{
+  "name": "about-us-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "check": "biome check",
+    "check:write": "biome check --write",
+    "check:staged": "biome check --staged"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.2",
+    "turbo": "latest"
+  },
+  "packageManager": "pnpm@10.30.0"
+}
