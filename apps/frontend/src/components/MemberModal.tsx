@@ -1,4 +1,4 @@
-import { Camera, Check, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Camera, Check, RefreshCw, X, ZoomIn, ZoomOut } from 'lucide-react'; // Aggiunto RefreshCw
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Cropper from 'react-easy-crop';
@@ -42,7 +42,7 @@ const MemberModal = ({
   const color = SECTION_COLORS[sectionKey];
   const isNew = !member?.name;
 
-  // 2. Define the drop handler
+  // Define the drop handler
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
@@ -54,12 +54,12 @@ const MemberModal = ({
     }
   }, []);
 
-  // 3. Initialize Dropzone
+  // Initialize Dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'image/*': [] },
     multiple: false,
-    noClick: false, // Allows clicking to open file browser too
+    noClick: false,
   });
 
   async function handleConfirmCrop() {
@@ -72,13 +72,16 @@ const MemberModal = ({
       const reader = new FileReader();
       reader.readAsDataURL(croppedBlob);
       reader.onloadend = () => {
-        const safeName = name
-          ? `${name.toLowerCase().replace(/ /g, '_')}.jpg`
-          : `upload_${Date.now()}.jpg`;
+        // Selettore intelligente del nome file
+        let newName = imageFilename;
+        // Se il filename è vuoto, oppure è uno di quelli temporanei generati prima, lo sovrascriviamo
+        if (!newName || newName.startsWith('immagine_')) {
+          newName = name
+            ? `${name.trim().toLowerCase().replace(/\s+/g, '_')}.jpg`
+            : `immagine_${Date.now()}.jpg`;
+        }
 
-        // Save locally instead of fetching!
-        setImageFilename(safeName);
-        // We'll store this in the parent state via onSave
+        setImageFilename(newName);
         setLocalImage(reader.result as string);
         setTempImage(null); // Close cropper
         setUploading(false);
@@ -91,8 +94,33 @@ const MemberModal = ({
 
   function handleSave() {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), role: role.trim(), imageFilename, localImage });
+
+    // Pulizia e normalizzazione del nome file inserito manualmente
+    let finalFilename = imageFilename.trim().toLowerCase();
+
+    if (finalFilename) {
+      // Sostituisci spazi con underscore
+      finalFilename = finalFilename.replace(/\s+/g, '_');
+      // Aggiungi .jpg se non c'è nessuna estensione
+      if (!finalFilename.includes('.')) {
+        finalFilename += '.jpg';
+      }
+    }
+
+    onSave({
+      name: name.trim(),
+      role: role.trim(),
+      imageFilename: finalFilename,
+      localImage,
+    });
   }
+
+  // Funzione helper per generare il filename in base al nome inserito nell'input
+  const autoGenerateFilename = () => {
+    if (name) {
+      setImageFilename(`${name.trim().toLowerCase().replace(/\s+/g, '_')}.jpg`);
+    }
+  };
 
   return (
     <div
@@ -151,7 +179,6 @@ const MemberModal = ({
               </div>
             )}
 
-            {/* Overlay hint when dragging over */}
             {isDragActive && (
               <div className="absolute inset-0 flex items-center justify-center bg-blue-500/20 rounded-full">
                 <Camera size={24} className="text-blue-600 animate-bounce" />
@@ -216,9 +243,37 @@ const MemberModal = ({
           </datalist>
         </div>
 
-        {imageFilename && (
-          <p className="text-xs text-gray-500 m-0 mb-4">📎 {imageFilename}</p>
-        )}
+        {/* --- NUOVO CAMPO: Nome file immagine --- */}
+        <div className="mb-4">
+          <label
+            className="block text-sm font-semibold text-gray-600 mb-1.25"
+            htmlFor="imageFilename"
+          >
+            Nome file immagine
+          </label>
+          <div className="flex gap-2 items-center">
+            <input
+              id="imageFilename"
+              className="flex-1 border border-gray-300 rounded-lg px-2.5 py-2 text-sm outline-none box-border font-inherit"
+              value={imageFilename}
+              onChange={(e) => setImageFilename(e.target.value)}
+              placeholder="es. mario_rossi.jpg"
+            />
+            <button
+              type="button"
+              className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={autoGenerateFilename}
+              title="Genera dal nome utente"
+              disabled={!name}
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1 ml-1">
+            Convenzione: <strong>nome_cognome.jpg</strong>
+          </p>
+        </div>
+        {/* --------------------------------------- */}
 
         <div className="flex gap-2 mt-5 items-center">
           {!isNew && (
@@ -267,7 +322,7 @@ const MemberModal = ({
           <div className="mt-4 flex gap-3 w-full max-w-xl items-center">
             <button
               type="button"
-              className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors"
+              className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors cursor-pointer"
               onClick={() => setZoom(Math.max(1, zoom - 0.2))}
               title="Rimpicciolisci"
             >
@@ -275,7 +330,7 @@ const MemberModal = ({
             </button>
             <input
               type="range"
-              className="flex-1"
+              className="flex-1 cursor-ew-resize"
               min={1}
               max={3}
               step={0.1}
@@ -285,7 +340,7 @@ const MemberModal = ({
             />
             <button
               type="button"
-              className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors"
+              className="bg-gray-600 hover:bg-gray-700 text-white p-2 rounded-lg transition-colors cursor-pointer"
               onClick={() => setZoom(Math.min(3, zoom + 0.2))}
               title="Ingrandisci"
             >
@@ -293,7 +348,7 @@ const MemberModal = ({
             </button>
             <button
               type="button"
-              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
               onClick={() => setTempImage(null)}
             >
               <X size={18} />
@@ -301,7 +356,7 @@ const MemberModal = ({
             </button>
             <button
               type="button"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2"
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
               onClick={handleConfirmCrop}
               disabled={uploading}
             >

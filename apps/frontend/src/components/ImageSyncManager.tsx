@@ -3,6 +3,7 @@ import {
   CheckCircle,
   CloudUpload,
   Download,
+  ExternalLink,
   Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -66,10 +67,19 @@ export default function ImageSyncManager({
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-gray-800 flex items-center gap-2">
             <CloudUpload className="text-blue-500" size={20} />
-            Da caricare su Drupal
+            Da caricare
             <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
               {localImages.length}
             </span>
+            <a
+              href="https://more.esn.it/?q=user/1/imce"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Carica manualmente le immagini da qui, oppure usa il tasto automatico"
+              className="text-blue-500 hover:text-blue-700 ml-2"
+            >
+              <ExternalLink size={16} />
+            </a>
           </h3>
           {localImages.length > 0 && !uploadResult && (
             <button

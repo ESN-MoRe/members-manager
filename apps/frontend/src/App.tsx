@@ -1,4 +1,14 @@
-import { AlertTriangle, ArrowRight, RefreshCw, RotateCcw } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle,
+  Download,
+  ExternalLink,
+  FileDown,
+  RefreshCw,
+  RotateCcw,
+  ShieldAlert,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import DiffViewer from './components/DiffViewer';
 import ImageSyncManager from './components/ImageSyncManager';
@@ -29,6 +39,7 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [view, setView] = useState<'edit' | 'preview'>('edit');
   const [previewData, setPreviewData] = useState<PreviewData | null>(null); // New State
+  const [hasBackedUp, setHasBackedUp] = useState(false); // <--- NUOVO STATO
 
   // Modal state
   const [editModal, setEditModal] = useState<{
@@ -121,6 +132,7 @@ export default function App() {
   const handleGoToPreview = async () => {
     if (!sections) return;
     setLoading(true);
+    setHasBackedUp(false); // <--- RESET BACKUP FLAG
     try {
       const res = await fetch(`/v1/members`, {
         method: 'POST',
@@ -137,6 +149,74 @@ export default function App() {
       alert("Errore nella generazione dell'anteprima");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // NUOVA FUNZIONE DI UTILITÀ
+  const downloadHtmlFile = (filename: string, content: string) => {
+    const element = document.createElement('a');
+    const file = new Blob([content], { type: 'text/html' });
+    element.href = URL.createObjectURL(file);
+    element.download = filename;
+    document.body.appendChild(element); // Required for this to work in FireFox
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const handleDownloadOld = () => {
+    if (!previewData) return;
+    const date = new Date().toISOString().split('T')[0];
+    downloadHtmlFile(`backup_esn_members_${date}.html`, previewData.oldHtml);
+    setHasBackedUp(true); // <--- SBLOCCA IL TASTO NUOVO
+  };
+
+  const handleDownloadNew = () => {
+    if (!previewData) return;
+    const date = new Date().toISOString().split('T')[0];
+    downloadHtmlFile(`new_esn_members_${date}.html`, previewData.newHtml);
+  };
+
+  // --- NUOVA FUNZIONE PER L'ANTEPRIMA LIVE ---
+  const handleOpenLivePreview = () => {
+    if (!previewData || !sections) return;
+
+    // 1. Parsiamo l'HTML generato dal backend (che contiene i path 'rotti' o vecchi per le nuove immagini)
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(previewData.newHtml, 'text/html');
+
+    // 2. Aggiungiamo il tag <base> per far caricare CSS/JS relativi dal sito vero
+    //    Nota: Lo mettiamo come primo elemento della head
+    const base = doc.createElement('base');
+    base.href = 'https://more.esn.it/';
+    doc.head.prepend(base);
+
+    // 3. Iniettiamo le immagini locali (Base64) al posto dei path generati dal backend
+    //    Recuperiamo tutti i membri che hanno una modifica locale dell'immagine
+    const membersWithLocalImages = Object.values(sections)
+      .flat()
+      .filter((m) => m.localImage && m.imageFilename);
+
+    membersWithLocalImages.forEach((member) => {
+      // Cerchiamo l'immagine nell'HTML tramite il filename
+      // Il backend genera src tipo: "./sites/esnmodena.it/files/members/nome_cognome.jpg"
+      // Quindi cerchiamo un src che finisca con il filename
+      const imgEl = doc.querySelector(`img[src$="${member.imageFilename}"]`);
+      if (imgEl && member.localImage) {
+        imgEl.setAttribute('src', member.localImage);
+      }
+    });
+
+    // 4. Serializziamo di nuovo l'HTML modificato
+    const finalHtml = doc.documentElement.outerHTML;
+
+    // 5. Apriamo una nuova finestra
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.open();
+      win.document.write(finalHtml);
+      win.document.close();
+    } else {
+      alert('Impossibile aprire la finestra. Controlla il blocco popup.');
     }
   };
 
@@ -257,13 +337,25 @@ export default function App() {
 
         <div className="flex items-center gap-3">
           {view === 'preview' && (
-            <button
-              type="button"
-              onClick={() => setView('edit')}
-              className="text-gray-500 hover:text-gray-700 font-semibold text-sm px-3 cursor-pointer"
-            >
-              Torna indietro
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setView('edit')}
+                className="text-gray-500 hover:text-gray-700 font-semibold text-sm px-3 cursor-pointer"
+              >
+                Torna indietro
+              </button>
+
+              {/* --- NUOVO BOTTONE ANTEPRIMA LIVE --- */}
+              <button
+                type="button"
+                onClick={handleOpenLivePreview}
+                className="bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-300 flex items-center gap-2 rounded-lg px-4 py-2 font-bold text-sm cursor-pointer transition-colors"
+                title="Apre una nuova scheda renderizzando la pagina esattamente come apparirà"
+              >
+                <ExternalLink size={18} /> Visualizza anteprima
+              </button>
+            </>
           )}
 
           {view === 'edit' && (
@@ -360,6 +452,78 @@ export default function App() {
         <main className="flex-1 p-6 md:p-10 flex flex-col items-center w-full max-w-400 mx-auto">
           {previewData ? (
             <div className="w-full flex flex-col gap-6">
+              {/* --- ZONA DI SICUREZZA / DOWNLOAD --- */}
+              <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-xl p-6 shadow-sm mb-2">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-orange-100 rounded-full text-orange-600 shrink-0">
+                    <ShieldAlert size={32} />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-bold text-gray-900 mb-1">
+                      Zona di sicurezza (Backup)
+                    </h2>
+                    <p className="text-gray-700 text-sm mb-4 leading-relaxed">
+                      Prima di caricare qualsiasi cosa su Drupal/Satellite,{' '}
+                      <strong>DEVI scaricare il backup</strong> dell'HTML
+                      attuale. Se qualcosa va storto, senza questo file{' '}
+                      <em>sono cazzi amari</em> per ripristinare il sito.
+                    </p>
+
+                    <div className="flex flex-wrap gap-4 items-center">
+                      {/* Tasto 1: Scarica Vecchio (Backup) */}
+                      <button
+                        type="button"
+                        onClick={handleDownloadOld}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm cursor-pointer transition-all shadow-sm ${
+                          hasBackedUp
+                            ? 'bg-green-100 text-green-700 border border-green-200'
+                            : 'bg-orange-600 hover:bg-orange-700 text-white'
+                        }`}
+                      >
+                        {hasBackedUp ? (
+                          <CheckCircle size={18} />
+                        ) : (
+                          <FileDown size={18} />
+                        )}
+                        {hasBackedUp
+                          ? 'Backup scaricato'
+                          : '1. SCARICA BACKUP (Obbligatorio)'}
+                      </button>
+
+                      {/* Freccia indicativa */}
+                      <div className="text-gray-400 hidden sm:block">
+                        <ArrowRight size={20} />
+                      </div>
+
+                      {/* Tasto 2: Scarica Nuovo (Bloccato finché non scarichi il vecchio) */}
+                      <div className="relative group">
+                        <button
+                          type="button"
+                          onClick={handleDownloadNew}
+                          disabled={!hasBackedUp}
+                          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all shadow-sm ${
+                            !hasBackedUp
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                          }`}
+                        >
+                          <Download size={18} />
+                          2. Scarica nuovo HTML
+                        </button>
+
+                        {/* Tooltip per spiegare perché è disabilitato */}
+                        {!hasBackedUp && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                            Scarica prima il backup!
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* --- FINE ZONA DI SICUREZZA --- */}
+
               {/* 1. Image Management Section */}
               <ImageSyncManager
                 localImages={Object.values(sections || {})
@@ -401,11 +565,17 @@ export default function App() {
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-yellow-800 text-sm flex gap-3 items-start mt-4">
                 <AlertTriangle className="shrink-0 mt-0.5" />
                 <div>
-                  <strong>Attenzione:</strong> Il salvataggio finale su Drupal
-                  non è automatico. Copia il codice dalla colonna di destra
-                  (Nuova versione) e incollalo manualmente su Drupal se
-                  necessario, oppure usa il metodo manuale. Questo tool
-                  automatizza solo le immagini.
+                  <strong>Attenzione:</strong> Il salvataggio finale non è
+                  automatico.{' '}
+                  <a
+                    href="https://more.esn.it/?q=node/104/edit"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-yellow-700 font-bold underline hover:text-yellow-900 transition-colors"
+                  >
+                    Vai qui
+                  </a>{' '}
+                  per modificare l'HTML con quello nuovo!!!
                 </div>
               </div>
             </div>
