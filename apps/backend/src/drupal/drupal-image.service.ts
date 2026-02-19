@@ -33,7 +33,7 @@ export class DrupalImageService {
 
       // Launch Browser
       browser = await puppeteer.launch({
-        headless: false, // Set to false to debug visually
+        headless: this.configService.get('NODE_ENV') !== 'development',
         executablePath: this.configService.get('PUPPETEER_EXECUTABLE_PATH'),
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });

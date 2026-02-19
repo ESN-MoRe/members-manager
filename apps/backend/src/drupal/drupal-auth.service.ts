@@ -79,7 +79,7 @@ export class DrupalAuthService implements OnModuleInit {
   ): Promise<string> {
     onLog?.('Launching browser...');
     const browser = await puppeteer.launch({
-      headless: true, // Use headless for production
+      headless: this.configService.get('NODE_ENV') !== 'development', // Headless in production, non-headless in development for easier debugging
       executablePath: this.puppeteerExecutablePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
