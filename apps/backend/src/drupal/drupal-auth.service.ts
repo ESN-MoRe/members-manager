@@ -1,19 +1,22 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import puppeteer from 'puppeteer';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class DrupalAuthService implements OnModuleInit {
   private readonly logger = new Logger(DrupalAuthService.name);
-  private readonly CACHE_TTL = 1000 * 60 * 60 * 2;
-  private cachedCookie: string | null = null;
-  private lastLoginTime: number = 0;
+  private readonly CACHE_KEY = 'drupal_session_cookie';
+  private readonly CACHE_TTL = 1000 * 60 * 60 * 2; // 2 hours in milliseconds
   private drupalUsername: string;
   private drupalPassword: string;
   private puppeteerExecutablePath: string | undefined;
   private refreshPromise: Promise<string> | null = null;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly cacheService: CacheService,
+  ) {}
 
   onModuleInit() {
     // Check required environment variables at startup
@@ -43,11 +46,11 @@ export class DrupalAuthService implements OnModuleInit {
    * concurrent requests need to refresh the token.
    */
   async getSessionCookie(onLog?: (msg: string) => void): Promise<string> {
-    const now = Date.now();
-
-    if (this.cachedCookie && now - this.lastLoginTime < this.CACHE_TTL) {
+    // Check cache first
+    const cachedCookie = await this.cacheService.get<string>(this.CACHE_KEY);
+    if (cachedCookie !== null) {
       onLog?.('Using cached session cookie.');
-      return this.cachedCookie;
+      return cachedCookie;
     }
 
     // If a refresh is already in progress, wait for it instead of starting a new one
@@ -60,8 +63,8 @@ export class DrupalAuthService implements OnModuleInit {
     onLog?.('Cookie missing or expired. Starting Puppeteer login...');
     this.refreshPromise = this.performPuppeteerLogin(onLog)
       .then((cookie) => {
-        this.cachedCookie = cookie;
-        this.lastLoginTime = Date.now();
+        // Cache the cookie with TTL
+        this.cacheService.set(this.CACHE_KEY, cookie, this.CACHE_TTL);
         return cookie;
       })
       .finally(() => {

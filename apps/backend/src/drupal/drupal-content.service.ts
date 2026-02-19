@@ -1,14 +1,8 @@
 import { HttpService } from '@nestjs/axios';
-import { Cache } from '@nestjs/cache-manager';
-import { CACHE_MANAGER } from '@nestjs/cache-manager/dist/cache.constants';
-import {
-  Inject,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import { firstValueFrom } from 'rxjs';
+import { CacheService } from '../cache/cache.service';
 import { DrupalAuthService } from './drupal-auth.service';
 
 @Injectable()
@@ -21,7 +15,7 @@ export class DrupalContentService {
   constructor(
     private readonly httpService: HttpService,
     private readonly authService: DrupalAuthService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheService: CacheService,
   ) {}
 
   async getAboutUsContent(
@@ -29,8 +23,8 @@ export class DrupalContentService {
     retry = true,
   ): Promise<string> {
     // 0. Check Cache First
-    const cachedContent = await this.cacheManager.get<string>(this.CACHE_KEY);
-    if (cachedContent) {
+    const cachedContent = await this.cacheService.get<string>(this.CACHE_KEY);
+    if (cachedContent !== null) {
       onLog?.('Content retrieved from cache.');
       return cachedContent;
     }
@@ -87,7 +81,7 @@ export class DrupalContentService {
       }
 
       // Store in cache
-      await this.cacheManager.set(this.CACHE_KEY, content, this.CACHE_TTL);
+      await this.cacheService.set(this.CACHE_KEY, content, this.CACHE_TTL);
       onLog?.('Content retrieved successfully and cached.');
       return content;
     } catch (error) {
@@ -95,7 +89,7 @@ export class DrupalContentService {
       if (retry) {
         this.logger.warn('Request failed. Invalidating cache and retrying...');
         // Clear the cache to force a fresh fetch on retry
-        await this.cacheManager.del(this.CACHE_KEY);
+        await this.cacheService.delete(this.CACHE_KEY);
         // For now, we'll just let the recursive call handle it if you implement cache clearing.
         // Ideally: await this.authService.invalidateCache();
         return this.performFetch(onLog, false);

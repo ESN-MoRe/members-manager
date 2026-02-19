@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import puppeteer, { ElementHandle, Page } from 'puppeteer';
+import puppeteer, { ElementHandle, Frame } from 'puppeteer';
 import { DrupalAuthService } from './drupal-auth.service';
 
 // Define a simpler interface that matches both Multer and local files
@@ -28,12 +28,12 @@ export class DrupalImageService {
     try {
       onLog?.('Initializing browser for upload...');
 
-      // 1. Get the Session Cookie String
+      // Get the Session Cookie String
       const cookieString = await this.authService.getSessionCookie(onLog);
 
-      // 2. Launch Browser
+      // Launch Browser
       browser = await puppeteer.launch({
-        headless: true, // Set to false to debug visually
+        headless: false, // Set to false to debug visually
         executablePath: this.configService.get('PUPPETEER_EXECUTABLE_PATH'),
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
@@ -41,30 +41,49 @@ export class DrupalImageService {
       const page = await browser.newPage();
       await page.setViewport({ width: 1280, height: 800 });
 
-      // 3. Set Cookies (Parse string back to objects)
+      // Set Cookies (Parse string back to objects)
       const cookies = this.parseCookieString(cookieString, 'more.esn.it');
       await page.setCookie(...cookies);
 
-      // 4. Navigate to IMCE
+      // Navigate to IMCE
       onLog?.('Navigating to IMCE File Manager...');
       await page.goto('https://more.esn.it/?q=user/1/imce', {
         waitUntil: 'networkidle2',
       });
 
-      // 5. Select "members" folder
+      // Wait for the IMCE iframe to load
+      const imceFrame = await page.waitForSelector('iframe[src*="imce"]', {
+        timeout: 10000,
+      });
+      if (!imceFrame) {
+        throw new Error('IMCE iframe not found');
+      }
+      const frame = await imceFrame.contentFrame();
+
+      // Trigger Antibot
+      onLog?.('I am really not a bot...');
+      await page.mouse.move(100, 100);
+      await page.keyboard.press('Tab');
+
+      // Select "members" folder
       onLog?.('Selecting "members" folder...');
-      // Wait for the tree to load
-      await page.waitForSelector('ul#navigation-tree');
+
+      // Handle any alert dialogs that might appear when selecting the folder
+      page.on('dialog', async (dialog) => {
+        await dialog.dismiss();
+      });
 
       // Click the specific anchor for "members"
       // The selector looks for an <a> with title="members" inside the tree
-      const membersFolderSelector = 'ul#navigation-tree a[title="members"]';
-      await page.waitForSelector(membersFolderSelector);
-      await page.click(membersFolderSelector);
+      const membersFolderSelector = 'a.folder[title="members"]';
+      await frame.waitForSelector(membersFolderSelector, {
+        timeout: 50000, // 5s timeout to find the folder
+      });
+      await frame.click(membersFolderSelector);
 
-      // 6. Wait for file list to populate (> 50 items sanity check)
+      // Wait for file list to populate (> 50 items sanity check)
       onLog?.('Waiting for file list to load...');
-      await page.waitForFunction(
+      await frame.waitForFunction(
         () => {
           const rows = document.querySelectorAll(
             '#file-list > tbody:nth-child(1) tr',
@@ -74,20 +93,20 @@ export class DrupalImageService {
         { timeout: 10000 },
       );
 
-      // 7. Open Upload Tab (Click "Upload" in toolbar)
+      // Open Upload Tab (Click "Upload" in toolbar)
       // We do this once, as the panel stays open
       const uploadTabSelector = '#op-item-upload a[name=upload]';
-      if (await page.$(uploadTabSelector)) {
-        await page.click(uploadTabSelector);
+      if (await frame.$(uploadTabSelector)) {
+        await frame.click(uploadTabSelector);
         // Wait for the form to be visible
-        await page.waitForSelector('#op-content-upload', { visible: true });
+        await frame.waitForSelector('#op-content-upload', { visible: true });
       }
 
-      // 8. Process Files Loop
+      // Process Files Loop
       for (const file of files) {
         try {
           onLog?.(`Uploading ${file.originalname}...`);
-          await this.uploadSingleFile(page, file.path, file.originalname);
+          await this.uploadSingleFile(frame, file.path, file.originalname);
           results.push({ filename: file.originalname, status: 'success' });
           onLog?.(`✅ Uploaded: ${file.originalname}`);
         } catch (err) {
@@ -107,13 +126,13 @@ export class DrupalImageService {
   }
 
   private async uploadSingleFile(
-    page: Page,
+    frame: Frame,
     filePath: string,
     originalName: string,
   ) {
-    // 1. Attach file to input
+    // Attach file to input
     const fileInputSelector = '#edit-imce';
-    const fileInput = (await page.waitForSelector(
+    const fileInput = (await frame.waitForSelector(
       fileInputSelector,
     )) as ElementHandle<HTMLInputElement>;
     if (!fileInput) throw new Error('File input not found');
@@ -121,14 +140,14 @@ export class DrupalImageService {
     // Clear previous input if needed (usually strictly not needed if we submit, but good practice)
     await fileInput.uploadFile(filePath);
 
-    // 2. Click Upload/Submit
+    // Click Upload/Submit
     const submitBtnSelector = '#edit-upload';
-    await page.click(submitBtnSelector);
+    await frame.click(submitBtnSelector);
 
-    // 3. Wait for success signal
+    // Wait for success signal
     // The user noticed that <div id="file-preview">...<img src="...name...">...</div> appears
     // We wait for the file preview to appear AND contain our filename
-    await page.waitForFunction(
+    await frame.waitForFunction(
       (name) => {
         const preview = document.querySelector('#file-preview');
         const img = preview?.querySelector('img');
