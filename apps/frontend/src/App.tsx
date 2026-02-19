@@ -1,99 +1,18 @@
-import {
-  AlertTriangle,
-  Camera,
-  GripVertical,
-  Loader,
-  LoaderCircle,
-  RefreshCw,
-  Save,
-  X,
-} from 'lucide-react';
+import { AlertTriangle, Camera, RefreshCw, Save, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import {
+  ROLE_SUGGESTIONS,
+  SECTION_BG,
+  SECTION_COLORS,
+  SECTION_KEYS,
+} from './constants';
+import SectionColumn from './SectionColumn';
+import type { MemberData, SectionsState, SectionType } from './types';
+import { imgUrl, initials, parseDrupalHtml } from './utils';
 
 // --- TYPES ---
-interface MemberData {
-  name: string;
-  role: string;
-  imageFilename?: string;
-}
-
-type SectionType = 'BOARD' | 'SUPPORTERS' | 'ACTIVE' | 'MASCOTS' | 'ALUMNI';
-type SectionsState = Record<SectionType, MemberData[]>;
-
-const SECTION_LABELS: Record<SectionType, string> = {
-  BOARD: 'Board',
-  SUPPORTERS: 'Board Supporters',
-  ACTIVE: 'Active Members',
-  MASCOTS: 'Mascots',
-  ALUMNI: 'Alumni Network',
-};
-
-const SECTION_COLORS: Record<SectionType, string> = {
-  BOARD: '#00aeef',
-  SUPPORTERS: '#f47b20',
-  ACTIVE: '#ec008c',
-  MASCOTS: '#ec008c',
-  ALUMNI: '#6c757d',
-};
-
-const SECTION_BG: Record<SectionType, string> = {
-  BOARD: 'rgba(0,174,239,0.08)',
-  SUPPORTERS: 'rgba(244,123,32,0.08)',
-  ACTIVE: 'rgba(236,0,140,0.08)',
-  MASCOTS: 'rgba(236,0,140,0.08)',
-  ALUMNI: 'rgba(108,117,125,0.10)',
-};
-
-const _API_BASE = 'http://localhost:3000';
-const SECTION_KEYS: SectionType[] = [
-  'BOARD',
-  'SUPPORTERS',
-  'ACTIVE',
-  'MASCOTS',
-  'ALUMNI',
-];
-
-const ROLE_SUGGESTIONS = [
-  'Presidente',
-  'Vicepresidente',
-  'Segretario',
-  'Segretaria',
-  'Tesoriere',
-  'Tesoriera',
-  'Webmaster',
-  'Event Manager',
-  'Partnership Manager',
-  'Active Member',
-  'Alumno',
-  'Alumna',
-  'Referente Reggio Emilia',
-  'Responsabile AskErasmus',
-  "Responsabile corso d'italiano",
-  'Coordinatrice Culture',
-  'Coordinatrice Education & Youth',
-  'Coordinatore Environmental Sustainability',
-  'Coordinatore Health & Well-Being',
-  'Coordinatore Skills & Employability',
-  'Coordinatore Social Inclusion',
-];
 
 // --- HELPERS ---
-function imgUrl(filename?: string) {
-  if (!filename) return '';
-  return new URL(
-    filename,
-    'https://more.esn.it/sites/esnmodena.it/files/members/',
-  ).href;
-}
-
-function initials(name: string) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 // --- MODAL ---
 interface ModalProps {
@@ -152,16 +71,19 @@ function MemberModal({
 
   return (
     <div
-      style={styles.overlay}
+      className="fixed inset-0 bg-black bg-opacity-35 z-[200] flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div style={{ ...styles.modal, borderTop: `4px solid ${color}` }}>
-        <div style={styles.modalHeader}>
-          <h2 style={{ ...styles.modalTitle, color }}>
+      <div
+        className="bg-white rounded-2xl px-7 py-6 w-full max-w-md shadow-2xl"
+        style={{ borderTop: `4px solid ${color}` }}
+      >
+        <div className="flex items-center justify-between mb-4.5">
+          <h2 className="font-bold text-lg m-0" style={{ color }}>
             {isNew ? 'Aggiungi membro' : 'Modifica membro'}
           </h2>
           <button
-            style={styles.closeBtn}
+            className="bg-none border-none text-lg cursor-pointer text-gray-500 leading-none"
             onClick={onClose}
             type="button"
             title="Chiudi"
@@ -171,35 +93,25 @@ function MemberModal({
         </div>
 
         {/* Preview avatar */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: 20,
-          }}
-        >
-          <div style={{ position: 'relative' }}>
+        <div className="flex justify-center mb-5">
+          <div className="relative">
             {imageFilename ? (
               <img
                 src={imgUrl(imageFilename)}
                 alt={name}
-                style={{ ...styles.avatarLg, border: `3px solid ${color}` }}
+                className="w-20 h-20 rounded-full object-cover block"
+                style={{ border: `3px solid ${color}` }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
             ) : (
               <div
+                className="w-20 h-20 rounded-full object-cover block flex items-center justify-center text-2xl font-bold"
                 style={{
-                  ...styles.avatarLg,
                   background: SECTION_BG[sectionKey],
                   border: `3px solid ${color}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
                   color,
-                  fontSize: 28,
-                  fontWeight: 700,
                 }}
               >
                 {initials(name) || '?'}
@@ -207,7 +119,8 @@ function MemberModal({
             )}
             <button
               type="button"
-              style={{ ...styles.uploadBtn, background: color }}
+              className="absolute bottom-0 right-0 border-none rounded-full w-7 h-7 cursor-pointer text-sm flex items-center justify-center text-white"
+              style={{ background: color }}
               onClick={() => fileRef.current?.click()}
               title="Carica foto"
             >
@@ -223,38 +136,37 @@ function MemberModal({
           onChange={handleUpload}
         />
         {uploadError && (
-          <p
-            style={{
-              color: '#e00',
-              textAlign: 'center',
-              margin: '0 0 12px',
-              fontSize: 13,
-            }}
-          >
+          <p className="text-red-600 text-center m-0 mb-3 text-sm">
             {uploadError}
           </p>
         )}
 
-        <div style={styles.field}>
-          <label style={styles.label} htmlFor="fullname">
+        <div className="mb-4">
+          <label
+            className="block text-sm font-semibold text-gray-600 mb-1.25"
+            htmlFor="fullname"
+          >
             Nome completo
           </label>
           <input
             id="fullname"
-            style={styles.input}
+            className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm outline-none box-border font-inherit"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="es. Mario Rossi"
           />
         </div>
 
-        <div style={styles.field}>
-          <label style={styles.label} htmlFor="role">
+        <div className="mb-4">
+          <label
+            className="block text-sm font-semibold text-gray-600 mb-1.25"
+            htmlFor="role"
+          >
             Ruolo
           </label>
           <input
             id="role"
-            style={styles.input}
+            className="w-full border border-gray-300 rounded-lg px-2.5 py-2 text-sm outline-none box-border font-inherit"
             list="roles-list"
             value={role}
             onChange={(e) => setRole(e.target.value)}
@@ -268,37 +180,31 @@ function MemberModal({
         </div>
 
         {imageFilename && (
-          <p style={{ fontSize: 12, color: '#888', margin: '0 0 16px' }}>
-            📎 {imageFilename}
-          </p>
+          <p className="text-xs text-gray-500 m-0 mb-4">📎 {imageFilename}</p>
         )}
 
-        <div style={styles.modalActions}>
+        <div className="flex gap-2 mt-5 items-center">
           {!isNew && (
             <button
               type="button"
-              style={{
-                ...styles.btn,
-                background: '#fee',
-                color: '#c00',
-                border: '1px solid #fcc',
-              }}
+              className="px-4 py-2 rounded-lg border-none font-semibold text-sm cursor-pointer bg-red-50 text-red-600 border border-red-200"
               onClick={onDelete}
             >
               Rimuovi
             </button>
           )}
-          <div style={{ flex: 1 }} />
+          <div className="flex-1" />
           <button
             type="button"
-            style={{ ...styles.btn, background: '#f0f0f0', color: '#333' }}
+            className="px-4 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-700 font-semibold text-sm cursor-pointer"
             onClick={onClose}
           >
             Annulla
           </button>
           <button
             type="button"
-            style={{ ...styles.btn, background: color, color: '#fff' }}
+            className="px-4 py-2 rounded-lg border-none font-semibold text-sm cursor-pointer text-white"
+            style={{ background: color }}
             onClick={handleSave}
           >
             {isNew ? 'Aggiungi' : 'Salva'}
@@ -310,275 +216,6 @@ function MemberModal({
 }
 
 // --- MEMBER CARD ---
-interface CardProps {
-  member: MemberData;
-  sectionKey: SectionType;
-  index: number;
-  onEdit: () => void;
-  onDragStart: (e: React.DragEvent) => void;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent) => void;
-  isDragOver: boolean;
-}
-
-function MemberCard({
-  member,
-  sectionKey,
-  onEdit,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  isDragOver,
-}: CardProps) {
-  const color = SECTION_COLORS[sectionKey];
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      draggable
-      onClick={onEdit}
-      onDragStart={onDragStart}
-      onDragOver={(e) => {
-        e.preventDefault();
-        onDragOver(e);
-      }}
-      onDrop={onDrop}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        ...styles.card,
-        borderLeft: `3px solid ${color}`,
-        background: hovered ? SECTION_BG[sectionKey] : '#fff',
-        opacity: isDragOver ? 0.5 : 1,
-        outline: isDragOver ? `2px dashed ${color}` : 'none',
-      }}
-    >
-      {/* Avatar */}
-      <div style={{ flexShrink: 0 }}>
-        {member.imageFilename ? (
-          <img
-            src={imgUrl(member.imageFilename)}
-            alt={member.name}
-            style={{ ...styles.avatar, boxShadow: `0 0 0 2px ${color}` }}
-            onError={(e) => {
-              const el = e.target as HTMLImageElement;
-              el.style.display = 'none';
-              const next = el.nextElementSibling as HTMLElement;
-              if (next) next.style.display = 'flex';
-            }}
-          />
-        ) : null}
-        <div
-          style={{
-            ...styles.avatarFallback,
-            background: SECTION_BG[sectionKey],
-            color,
-            display: member.imageFilename ? 'none' : 'flex',
-            boxShadow: `0 0 0 2px ${color}`,
-          }}
-        >
-          {initials(member.name)}
-        </div>
-      </div>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontWeight: 600,
-            fontSize: 14,
-            color: '#1a1a1a',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {member.name}
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color,
-            marginTop: 2,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {member.role || '—'}
-        </div>
-      </div>
-
-      {/* Drag handle */}
-      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-        <span
-          style={{
-            color: '#bbb',
-            cursor: 'grab',
-            fontSize: 16,
-            padding: '0 2px',
-          }}
-          title="Trascina"
-        >
-          <GripVertical size={16} />
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// --- SECTION COLUMN ---
-interface SectionColumnProps {
-  sectionKey: SectionType;
-  members: MemberData[];
-  onEdit: (idx: number) => void;
-  onAddNew: () => void;
-  onDragStart: (memberIdx: number) => void;
-  onDropOnCard: (targetIdx: number) => void;
-  onDropOnSection: () => void;
-  dragSource: { section: SectionType; index: number } | null;
-}
-
-function SectionColumn({
-  sectionKey,
-  members,
-  onEdit,
-  onAddNew,
-  onDragStart,
-  onDropOnCard,
-  onDropOnSection,
-  dragSource,
-}: SectionColumnProps) {
-  const color = SECTION_COLORS[sectionKey];
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
-  const [dragOverSection, setDragOverSection] = useState(false);
-
-  return (
-    <div
-      style={{ ...styles.column, borderTop: `3px solid ${color}` }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOverSection(true);
-      }}
-      onDragLeave={() => setDragOverSection(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragOverSection(false);
-        onDropOnSection();
-      }}
-    >
-      <div style={styles.columnHeader}>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color }}>
-            {SECTION_LABELS[sectionKey]}
-          </div>
-          <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-            {members.length} {members.length === 1 ? 'membro' : 'membri'}
-          </div>
-        </div>
-        <button
-          type="button"
-          style={{ ...styles.addBtn, color, borderColor: color }}
-          onClick={onAddNew}
-          title="Aggiungi membro"
-        >
-          ＋
-        </button>
-      </div>
-
-      <div
-        style={{
-          ...styles.cardList,
-          outline:
-            dragOverSection && dragSource?.section !== sectionKey
-              ? `2px dashed ${color}`
-              : 'none',
-          borderRadius: 8,
-        }}
-      >
-        {members.length === 0 ? (
-          <div
-            style={{
-              padding: '20px 0',
-              textAlign: 'center',
-              color: '#bbb',
-              fontSize: 13,
-            }}
-          >
-            Nessun membro.
-            <br />
-            Trascina qui o aggiungi.
-          </div>
-        ) : (
-          // --- CHANGED ---
-          // Removed <Masonry> and used standard map
-          members.map((member, index) => (
-            <MemberCard
-              key={`${member.name}-${index}`} // Add a key
-              member={member}
-              sectionKey={sectionKey}
-              index={index}
-              onEdit={() => onEdit(index)}
-              onDragStart={(e) => {
-                e.dataTransfer.effectAllowed = 'move';
-                onDragStart(index);
-              }}
-              onDragOver={() => setDragOverIdx(index)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOverIdx(null);
-                onDropOnCard(index);
-              }}
-              isDragOver={dragOverIdx === index}
-            />
-          ))
-          // ---------------
-        )}
-      </div>
-    </div>
-  );
-}
-
-function parseDrupalHtml(html: string): SectionsState {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-
-  const state: Partial<SectionsState> = {};
-
-  // These labels must match exactly what's in your Drupal HTML aria-labels
-  const sectionsConfig = [
-    { key: 'BOARD' as SectionType, search: 'Board members' },
-    { key: 'SUPPORTERS' as SectionType, search: 'Board Supporters' },
-    { key: 'ACTIVE' as SectionType, search: 'Active Members' },
-    { key: 'MASCOTS' as SectionType, search: 'Mascots' },
-    { key: 'ALUMNI' as SectionType, search: 'Alumni Network' },
-  ];
-
-  sectionsConfig.forEach(({ key, search }) => {
-    // Find the section by aria-label
-    const sectionEl = Array.from(doc.querySelectorAll('section')).find((s) =>
-      s.getAttribute('aria-label')?.includes(search),
-    );
-
-    if (sectionEl) {
-      const items = Array.from(
-        sectionEl.querySelectorAll('article[role="listitem"]'),
-      );
-      state[key] = items.map((article) => {
-        const name = article.querySelector('h3')?.textContent?.trim() || '';
-        const role =
-          article.querySelector('p:last-of-type')?.textContent?.trim() || '';
-        const img = article.querySelector('img')?.getAttribute('src') || '';
-        const imageFilename = img.split('/').pop() || '';
-        return { name, role, imageFilename };
-      });
-    } else {
-      state[key] = [];
-    }
-  });
-
-  return state as SectionsState;
-}
 
 // --- APP ---
 export default function App() {
@@ -724,13 +361,13 @@ export default function App() {
 
   if (error)
     return (
-      <div style={styles.centered}>
-        <div style={{ textAlign: 'center', color: '#c00' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <div className="text-4xl mb-3">
             <AlertTriangle size={40} />
           </div>
-          <div style={{ fontWeight: 600 }}>{error}</div>
-          <div style={{ color: '#888', marginTop: 8, fontSize: 13 }}>
+          <div className="font-semibold">{error}</div>
+          <div className="text-gray-500 mt-2 text-sm">
             Assicurati che il server Express sia in esecuzione.
           </div>
         </div>
@@ -745,34 +382,31 @@ export default function App() {
       : null;
 
   return (
-    <div style={styles.app}>
+    <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
       {/* Floating Loading Indicator */}
       {loading && (
-        <div style={styles.floatingLoader}>
-          <div style={styles.spinner} />
-          <span style={{ marginTop: 8, fontSize: 12, color: '#00aeef' }}>
-            Caricamento...
-          </span>
+        <div className="fixed bottom-5 right-5 bg-white rounded-xl px-5 py-4 flex flex-col items-center shadow-lg z-[150]">
+          <div className="w-9 h-9 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+          <span className="mt-2 text-xs text-blue-500">Caricamento...</span>
         </div>
       )}
 
       {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.logo}>
+      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-[100] shadow-sm">
+        <div className="flex items-center gap-2.5">
           <img
             src="https://more.esn.it/sites/esnmodena.it/files/web-it-mode-esn-colour-black.png"
             alt="ESN Logo"
-            style={{ height: 40, marginRight: 10 }}
+            className="h-10 mr-2.5"
           />
-          <span style={styles.logoText}>ESN MoRe Team Manager</span>
+          <span className="font-bold text-lg text-gray-900 tracking-tight">
+            ESN MoRe Team Manager
+          </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {saveMsg && (
             <span
-              style={{
-                fontSize: 14,
-                color: saveMsg.startsWith('✅') ? '#28a745' : '#c00',
-              }}
+              className={`text-sm ${saveMsg.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}
             >
               {saveMsg}
             </span>
@@ -781,12 +415,12 @@ export default function App() {
             type="button"
             onClick={startStreaming}
             disabled={isStreaming}
-            style={styles.secondaryBtn}
+            className="bg-gray-100 text-gray-700 border border-gray-300 rounded-lg px-3.5 py-2 flex items-center gap-2 font-semibold text-sm cursor-pointer"
           >
             {isStreaming ? (
               // 'Syncando...'
               <>
-                <div style={styles.spinnerSmall} />
+                <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
                 Syncando...
               </>
             ) : (
@@ -797,12 +431,15 @@ export default function App() {
           </button>
           <button
             type="button"
-            style={{ ...styles.saveBtn, opacity: saving ? 0.7 : 1 }}
+            className={`bg-blue-500 text-white flex items-center gap-2 border-none rounded-lg px-4.5 py-2 font-semibold text-sm cursor-pointer ${saving ? 'opacity-70' : ''}`}
             onClick={handleSave}
             disabled={saving}
           >
             {saving ? (
-              'Salvataggio...'
+              <>
+                <div className="w-4 h-4 border-2 border-gray-200 border-t-white rounded-full animate-spin mr-1" />
+                Salvando...
+              </>
             ) : (
               <>
                 <Save size={16} /> Salva HTML
@@ -812,12 +449,17 @@ export default function App() {
         </div>
       </header>
 
-      <div style={styles.logContainer}>
-        <div style={styles.logHeader}>Log del server (da Puppeteer)</div>
-        <div style={styles.logBody} ref={logBodyRef}>
+      <div className="mx-5 mt-5 mb-0 bg-gray-800 rounded-lg overflow-hidden text-white font-mono text-xs shadow-lg">
+        <div className="px-3 py-2 bg-gray-700 border-b border-gray-600 text-gray-400 uppercase text-[10px] tracking-wider">
+          Log del server (da Puppeteer)
+        </div>
+        <div
+          className="px-3 py-3 max-h-[150px] overflow-y-auto flex flex-col gap-1"
+          ref={logBodyRef}
+        >
           {logs.map((log, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static
-            <div key={i} style={styles.logLine}>
+            <div key={i} className="leading-relaxed">
               <span style={{ color: SECTION_COLORS.BOARD }}>&gt;</span> {log}
             </div>
           ))}
@@ -825,7 +467,7 @@ export default function App() {
       </div>
 
       {/* Kanban board */}
-      <main style={styles.board}>
+      <main className="block columns-3 column-gap-4 px-5 py-5 flex-1 overflow-x-auto">
         {sections &&
           SECTION_KEYS.map((key) => (
             <SectionColumn
@@ -859,298 +501,3 @@ export default function App() {
     </div>
   );
 }
-
-// --- STYLES ---
-const styles: Record<string, React.CSSProperties> = {
-  app: {
-    minHeight: '100vh',
-    background: '#f5f7fa',
-    fontFamily: "'Segoe UI', system-ui, sans-serif",
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  header: {
-    background: '#fff',
-    borderBottom: '1px solid #e5e7eb',
-    padding: '12px 24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-  },
-  logo: { display: 'flex', alignItems: 'center', gap: 10 },
-  logoText: {
-    fontWeight: 700,
-    fontSize: 18,
-    color: '#1a1a1a',
-    letterSpacing: '-0.02em',
-  },
-  saveBtn: {
-    background: '#00aeef',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 8,
-    padding: '8px 18px',
-    fontWeight: 600,
-    fontSize: 14,
-    cursor: 'pointer',
-  },
-  board: {
-    // --- CHANGED ---
-    // Switched from Grid to Column layout to allow "float up" behavior
-    display: 'block',
-    columnCount: 3, // Back to 3 columns
-    columnGap: 16,
-    // ---------------
-
-    padding: '20px 20px',
-    flex: 1,
-    overflowX: 'auto', // Keep in case content is very wide
-  },
-  column: {
-    background: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
-    minHeight: 200,
-
-    // --- ADDED ---
-    // Prevents the section from splitting across columns and adds vertical spacing
-    breakInside: 'avoid',
-    marginBottom: 16,
-    // -------------
-  },
-  columnHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  cardList: {
-    // --- CHANGED ---
-    // Back to single column layout inside each section
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    // ---------------
-
-    padding: 4,
-    transition: 'outline 0.15s',
-    borderRadius: 8,
-  },
-  card: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '10px 10px',
-    borderRadius: 8,
-    cursor: 'grab',
-    transition: 'background 0.15s',
-    userSelect: 'none',
-  },
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: '50%',
-    objectFit: 'cover',
-    display: 'block',
-  },
-  avatarFallback: {
-    width: 38,
-    height: 38,
-    borderRadius: '50%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 700,
-    fontSize: 14,
-  },
-  avatarLg: {
-    width: 80,
-    height: 80,
-    borderRadius: '50%',
-    objectFit: 'cover',
-    display: 'block',
-  },
-  editBtn: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: '2px 4px',
-    borderRadius: 4,
-    lineHeight: 1,
-  },
-  addBtn: {
-    background: 'none',
-    border: '1.5px dashed',
-    borderRadius: 6,
-    width: 28,
-    height: 28,
-    cursor: 'pointer',
-    fontWeight: 700,
-    fontSize: 16,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    lineHeight: 1,
-  },
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.35)',
-    zIndex: 200,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modal: {
-    background: '#fff',
-    borderRadius: 14,
-    padding: '24px 28px',
-    width: '100%',
-    maxWidth: 420,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-  },
-  modalHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-  modalTitle: { fontWeight: 700, fontSize: 18, margin: 0 },
-  closeBtn: {
-    background: 'none',
-    border: 'none',
-    fontSize: 18,
-    cursor: 'pointer',
-    color: '#888',
-    lineHeight: 1,
-  },
-  field: { marginBottom: 16 },
-  label: {
-    display: 'block',
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#444',
-    marginBottom: 5,
-  },
-  input: {
-    width: '100%',
-    border: '1.5px solid #ddd',
-    borderRadius: 7,
-    padding: '8px 10px',
-    fontSize: 14,
-    outline: 'none',
-    boxSizing: 'border-box',
-    fontFamily: 'inherit',
-  },
-  modalActions: {
-    display: 'flex',
-    gap: 8,
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  btn: {
-    padding: '8px 16px',
-    borderRadius: 7,
-    border: 'none',
-    fontWeight: 600,
-    fontSize: 14,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-  },
-  centered: {
-    height: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  spinner: {
-    width: 36,
-    height: 36,
-    border: '3px solid #e0e0e0',
-    borderTop: '3px solid #00aeef',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-  },
-  spinnerSmall: {
-    width: 16,
-    height: 16,
-    border: '2px solid #e0e0e0',
-    borderTop: '2px solid #00aeef',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-    display: 'inline-block',
-  },
-  uploadBtn: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    border: 'none',
-    borderRadius: '50%',
-    width: 28,
-    height: 28,
-    cursor: 'pointer',
-    fontSize: 14,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#fff',
-  },
-  logContainer: {
-    margin: '20px 20px 0',
-    background: '#1e1e1e',
-    borderRadius: 8,
-    overflow: 'hidden',
-    color: '#fff',
-    fontFamily: 'monospace',
-    fontSize: 12,
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  },
-  logHeader: {
-    padding: '8px 12px',
-    background: '#333',
-    borderBottom: '1px solid #444',
-    color: '#aaa',
-    textTransform: 'uppercase',
-    fontSize: 10,
-    letterSpacing: '0.05em',
-  },
-  logBody: {
-    padding: '12px',
-    maxHeight: '150px',
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-  },
-  logLine: {
-    lineHeight: 1.4,
-  },
-  secondaryBtn: {
-    background: '#f0f0f0',
-    color: '#333',
-    border: '1px solid #ddd',
-    borderRadius: 8,
-    padding: '8px 14px',
-    fontWeight: 600,
-    fontSize: 13,
-    cursor: 'pointer',
-  },
-  floatingLoader: {
-    position: 'fixed',
-    bottom: 20,
-    right: 20,
-    background: '#fff',
-    borderRadius: 12,
-    padding: '16px 20px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-    zIndex: 150,
-  },
-};
