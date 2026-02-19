@@ -27,6 +27,7 @@ const MemberModal = ({
   const [imageFilename, setImageFilename] = useState(
     member?.imageFilename ?? '',
   );
+  const [localImage, setLocalImage] = useState(member?.localImage ?? '');
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [tempImage, setTempImage] = useState<string | null>(null);
@@ -66,34 +67,31 @@ const MemberModal = ({
     setUploading(true);
     try {
       const croppedBlob = await getCroppedImg(tempImage, croppedAreaPixels);
-      const file = new File([croppedBlob], 'avatar.jpg', {
-        type: 'image/jpeg',
-      });
 
-      const form = new FormData();
-      const safeName = name
-        ? `${name.toLowerCase().replace(/ /g, '_')}.jpg`
-        : `upload_${Date.now()}.jpg`;
+      // Convert Blob to Base64 (Data URL)
+      const reader = new FileReader();
+      reader.readAsDataURL(croppedBlob);
+      reader.onloadend = () => {
+        const safeName = name
+          ? `${name.toLowerCase().replace(/ /g, '_')}.jpg`
+          : `upload_${Date.now()}.jpg`;
 
-      form.append('photo', file);
-      form.append('filename', safeName);
-
-      const res = await fetch(`/v1/upload`, { method: 'POST', body: form });
-      if (!res.ok) throw new Error('Upload fallito');
-      const data = await res.json();
-
-      setImageFilename(data.filename);
-      setTempImage(null); // Close cropper
+        // Save locally instead of fetching!
+        setImageFilename(safeName);
+        // We'll store this in the parent state via onSave
+        setLocalImage(reader.result as string);
+        setTempImage(null); // Close cropper
+        setUploading(false);
+      };
     } catch (_err) {
-      setUploadError('Errore durante il ritaglio/upload.');
-    } finally {
+      setUploadError('Errore durante il ritaglio.');
       setUploading(false);
     }
   }
 
   function handleSave() {
     if (!name.trim()) return;
-    onSave({ name: name.trim(), role: role.trim(), imageFilename });
+    onSave({ name: name.trim(), role: role.trim(), imageFilename, localImage });
   }
 
   return (
@@ -130,9 +128,9 @@ const MemberModal = ({
           >
             <input {...getInputProps()} />
 
-            {imageFilename ? (
+            {localImage || imageFilename ? (
               <img
-                src={imgUrl(imageFilename)}
+                src={localImage || imgUrl(imageFilename)}
                 alt={name}
                 className="w-20 h-20 rounded-full object-cover block"
                 style={{

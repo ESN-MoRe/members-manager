@@ -1,13 +1,7 @@
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  RefreshCw,
-  RotateCcw,
-} from 'lucide-react';
+import { AlertTriangle, ArrowRight, RefreshCw, RotateCcw } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import DiffViewer from './components/DiffViewer'; // Import
-import ImageSyncManager from './components/ImageSyncManager'; // Import
+import DiffViewer from './components/DiffViewer';
+import ImageSyncManager from './components/ImageSyncManager';
 import MemberModal from './components/MemberModal';
 import WelcomeModal from './components/WelcomeModal';
 import { SECTION_COLORS, SECTION_KEYS } from './constants';
@@ -29,7 +23,7 @@ export default function App() {
   const [sections, setSections] = useState<SectionsState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState('');
+  const [_saveMsg, setSaveMsg] = useState('');
   const [error, setError] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -139,6 +133,7 @@ export default function App() {
       setPreviewData(data); // Save the full response including Diff and Images
       setView('preview');
     } catch (e) {
+      console.error('Error generating preview:', e);
       alert("Errore nella generazione dell'anteprima");
     } finally {
       setLoading(false);
@@ -362,12 +357,25 @@ export default function App() {
           </main>
         </>
       ) : (
-        <main className="flex-1 p-6 md:p-10 flex flex-col items-center w-full max-w-[1600px] mx-auto">
+        <main className="flex-1 p-6 md:p-10 flex flex-col items-center w-full max-w-400 mx-auto">
           {previewData ? (
             <div className="w-full flex flex-col gap-6">
               {/* 1. Image Management Section */}
               <ImageSyncManager
-                toUpload={previewData.images.toUpload}
+                localImages={Object.values(sections || {})
+                  .flat()
+                  .filter(
+                    (
+                      m,
+                    ): m is MemberData & {
+                      localImage: string;
+                      imageFilename: string;
+                    } => Boolean(m.localImage && m.imageFilename),
+                  )
+                  .map((m) => ({
+                    filename: m.imageFilename,
+                    dataUrl: m.localImage,
+                  }))}
                 toDelete={previewData.images.toDelete}
               />
 

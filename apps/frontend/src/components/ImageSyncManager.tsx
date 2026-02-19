@@ -1,14 +1,20 @@
-import { ArrowRight, CheckCircle, CloudUpload, Trash2 } from 'lucide-react';
+import {
+  ArrowRight,
+  CheckCircle,
+  CloudUpload,
+  Download,
+  Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { imgUrl } from '../utils';
 
 interface ImageSyncManagerProps {
-  toUpload: string[];
+  localImages: { filename: string; dataUrl: string }[];
   toDelete: string[];
 }
 
 export default function ImageSyncManager({
-  toUpload,
+  localImages,
   toDelete,
 }: ImageSyncManagerProps) {
   const [uploading, setUploading] = useState(false);
@@ -18,19 +24,29 @@ export default function ImageSyncManager({
   }>(null);
 
   const handleSync = async () => {
-    if (toUpload.length === 0) return;
+    if (localImages.length === 0) return;
     setUploading(true);
     try {
-      const res = await fetch('/v1/members/deploy-images', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filenames: toUpload }),
-      });
-      const data = await res.json();
+      const form = new FormData();
 
+      // Convert base64 data URLs back to Blobs/Files
+      for (const img of localImages) {
+        const res = await fetch(img.dataUrl);
+        const blob = await res.blob();
+        form.append('photos', blob, img.filename);
+      }
+
+      // Hit the standard upload endpoint!
+      const res = await fetch('/v1/members/upload', {
+        method: 'POST',
+        body: form,
+      });
+
+      const data = await res.json();
       const successCount = data.results.filter(
         (r: { status: string }) => r.status === 'success',
       ).length;
+
       setUploadResult({
         success: successCount,
         failed: data.results.length - successCount,
@@ -52,10 +68,10 @@ export default function ImageSyncManager({
             <CloudUpload className="text-blue-500" size={20} />
             Da caricare su Drupal
             <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">
-              {toUpload.length}
+              {localImages.length}
             </span>
           </h3>
-          {toUpload.length > 0 && !uploadResult && (
+          {localImages.length > 0 && !uploadResult && (
             <button
               type="button"
               onClick={handleSync}
@@ -82,27 +98,33 @@ export default function ImageSyncManager({
               {uploadResult.success} caricati, {uploadResult.failed} falliti.
             </p>
           </div>
-        ) : toUpload.length === 0 ? (
+        ) : localImages.length === 0 ? (
           <p className="text-sm text-gray-400 italic">
             Nessuna nuova immagine da caricare.
           </p>
         ) : (
           <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
-            {toUpload.map((filename) => (
+            {localImages.map((img) => (
               <li
-                key={filename}
+                key={img.filename}
                 className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-100"
               >
-                {/* We use local server path for preview if possible, otherwise rely on fallback */}
                 <img
-                  src={`/members-img/${filename}`} // Assumes NestJS serves static from public
+                  src={img.dataUrl}
                   alt=""
                   className="w-10 h-10 rounded object-cover bg-gray-200"
-                  onError={(e) => (e.currentTarget.src = imgUrl(filename))} // Fallback
                 />
-                <span className="text-sm font-medium text-gray-700 truncate">
-                  {filename}
+                <span className="text-sm font-medium text-gray-700 truncate flex-1">
+                  {img.filename}
                 </span>
+                <a
+                  href={img.dataUrl}
+                  download={img.filename}
+                  className="p-2 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                  title="Scarica immagine"
+                >
+                  <Download size={16} />
+                </a>
               </li>
             ))}
           </ul>

@@ -55,9 +55,9 @@ const MemberCard = ({
     >
       {/* Avatar */}
       <div className="shrink-0">
-        {member.imageFilename ? (
+        {member.imageFilename || member.localImage ? (
           <img
-            src={imgUrl(member.imageFilename)}
+            src={member.localImage || imgUrl(member.imageFilename)}
             alt={member.name}
             className="w-9.5 h-9.5 rounded-full object-cover block"
             style={{ boxShadow: `0 0 0 2px ${color}` }}
@@ -74,7 +74,8 @@ const MemberCard = ({
           style={{
             background: SECTION_BG[sectionKey],
             color,
-            display: member.imageFilename ? 'none' : 'flex',
+            display:
+              member.imageFilename || member.localImage ? 'none' : 'flex',
             boxShadow: `0 0 0 2px ${color}`,
           }}
         >
