@@ -10,9 +10,7 @@ import { MembersModule } from './members/members.module';
 @Module({
   imports: [
     DrupalModule,
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
+    ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'), // Serve files from /public
       exclude: ['/v1{/*path}'], // Don't block API routes
