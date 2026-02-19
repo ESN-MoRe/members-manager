@@ -30,7 +30,7 @@ const SectionColumn = ({
 
   return (
     <div
-      className="bg-white rounded-xl p-4 shadow-sm min-h-[200px] break-inside-avoid mb-4 border-t-[3px]"
+      className="bg-white rounded-xl p-4 shadow-sm min-h-50 break-inside-avoid mb-4 border-t-[3px]"
       style={{ borderTopColor: color }}
       onDragOver={(e) => {
         e.preventDefault();
@@ -43,7 +43,7 @@ const SectionColumn = ({
         onDropOnSection();
       }}
     >
-      <div className="flex items-center justify-between mb-[14px]">
+      <div className="flex items-center justify-between mb-3.5">
         <div>
           <div className="font-bold text-[15px]" style={{ color }}>
             {SECTION_LABELS[sectionKey]}

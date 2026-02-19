@@ -48,12 +48,12 @@ const MemberCard = ({
       }}
     >
       {/* Avatar */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         {member.imageFilename ? (
           <img
             src={imgUrl(member.imageFilename)}
             alt={member.name}
-            className="w-[38px] h-[38px] rounded-full object-cover block"
+            className="w-9.5 h-9.5 rounded-full object-cover block"
             style={{ boxShadow: `0 0 0 2px ${color}` }}
             onError={(e) => {
               const el = e.target as HTMLImageElement;
@@ -64,7 +64,7 @@ const MemberCard = ({
           />
         ) : null}
         <div
-          className="w-[38px] h-[38px] rounded-full items-center justify-center font-bold text-sm flex"
+          className="w-9.5 h-9.5 rounded-full items-center justify-center font-bold text-sm flex"
           style={{
             background: SECTION_BG[sectionKey],
             color,
@@ -90,7 +90,7 @@ const MemberCard = ({
       </div>
 
       {/* Drag handle */}
-      <div className="flex gap-1 flex-shrink-0">
+      <div className="flex gap-1 shrink-0">
         <span
           className="text-gray-400 cursor-grab text-base py-0 px-0.5"
           title="Trascina"

@@ -71,7 +71,7 @@ function MemberModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-35 z-[200] flex items-center justify-center"
+      className="fixed inset-0 bg-black bg-opacity-35 z-200 flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
@@ -385,14 +385,14 @@ export default function App() {
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
       {/* Floating Loading Indicator */}
       {loading && (
-        <div className="fixed bottom-5 right-5 bg-white rounded-xl px-5 py-4 flex flex-col items-center shadow-lg z-[150]">
+        <div className="fixed bottom-5 right-5 bg-white rounded-xl px-5 py-4 flex flex-col items-center shadow-lg z-150">
           <div className="w-9 h-9 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
           <span className="mt-2 text-xs text-blue-500">Caricamento...</span>
         </div>
       )}
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-[100] shadow-sm">
+      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-100 shadow-sm">
         <div className="flex items-center gap-2.5">
           <img
             src="https://more.esn.it/sites/esnmodena.it/files/web-it-mode-esn-colour-black.png"
