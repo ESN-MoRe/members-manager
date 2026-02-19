@@ -8,9 +8,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import type { DrupalContentService } from '../drupal/drupal-content.service';
-import type { MemberData } from './esn-page-manager';
-import type { MembersService } from './members.service';
+import { DrupalContentService } from '../drupal/drupal-content.service';
+import { MemberData } from './esn-page-manager';
+import { MembersService } from './members.service';
 
 // Multer config for images
 const storage = diskStorage({

@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  ESNPageManager,
-  type MemberData,
-  type SectionType,
-} from './esn-page-manager';
+import { ESNPageManager, MemberData, SectionType } from './esn-page-manager';
 
 @Injectable()
 export class MembersService {

@@ -1,8 +1,8 @@
-import type { HttpService } from '@nestjs/axios';
+import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import { firstValueFrom } from 'rxjs';
-import type { DrupalAuthService } from './drupal-auth.service';
+import { DrupalAuthService } from './drupal-auth.service';
 
 @Injectable()
 export class DrupalContentService {

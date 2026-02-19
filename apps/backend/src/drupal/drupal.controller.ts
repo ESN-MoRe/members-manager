@@ -1,6 +1,6 @@
-import { Controller, type MessageEvent, Sse } from '@nestjs/common';
-import { type Observable, Subject } from 'rxjs';
-import type { DrupalContentService } from './drupal-content.service';
+import { Controller, MessageEvent, Sse } from '@nestjs/common';
+import { Observable, Subject } from 'rxjs';
+import { DrupalContentService } from './drupal-content.service';
 
 @Controller('drupal')
 export class DrupalController {
