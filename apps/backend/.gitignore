@@ -59,5 +59,5 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 uploads/
 
 # Public directory (contains the frontend build output)
-public/
+public/*
 !public/robots.txt
