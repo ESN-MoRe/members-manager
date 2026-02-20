@@ -116,20 +116,42 @@ export default function App() {
   }, [imagesUploadedPendingSave]);
 
   async function handleSave() {
-    if (!sections) return;
+    if (!sections || !previewData) return;
+
     setSaving(true);
     setSaveMsg('');
+
     try {
+      // 1. Opzionale: Salviamo comunque lo stato sul backend locale per coerenza
       const res = await fetch(`/v1/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sections),
       });
-      if (!res.ok) throw new Error();
-      setSaveMsg('✅ HTML aggiornato!');
+
+      if (!res.ok)
+        throw new Error('Errore durante il salvataggio sul server locale');
+
+      // 2. Copia l'HTML negli appunti
+      await navigator.clipboard.writeText(previewData.newHtml);
+
+      // 3. Notifica l'utente e chiedi conferma per aprire Drupal
+      const message =
+        '✅ HTML copiato negli appunti!\n\n' +
+        'Ora verrai reindirizzato alla pagina di modifica di Drupal.\n' +
+        "Ti basta incollare (Ctrl+V) il codice nel campo 'Body' e salvare la pagina.\n\n" +
+        'Vuoi procedere?';
+
+      if (window.confirm(message)) {
+        window.open('https://more.esn.it/?q=node/104/edit', '_blank');
+      }
+
       setImagesUploadedPendingSave(false);
-    } catch {
-      setSaveMsg('❌ Errore nel salvataggio.');
+      setSaveMsg('✅ Successo!');
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante l'operazione di salvataggio o copia.");
+      setSaveMsg('❌ Errore');
     } finally {
       setSaving(false);
       setTimeout(() => setSaveMsg(''), 3000);
