@@ -5,7 +5,6 @@ import {
   ExternalLink,
   FileDown,
   RefreshCw,
-  RotateCcw,
   ShieldAlert,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
