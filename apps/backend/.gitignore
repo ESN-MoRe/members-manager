@@ -60,4 +60,3 @@ uploads/
 
 # Public directory (contains the frontend build output)
 public/*
-!public/robots.txt
