@@ -14,4 +14,10 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Esci da apps/frontend ed entra in apps/backend/public
+    outDir: '../backend/public',
+    // Svuota la cartella prima di buildare
+    emptyOutDir: true,
+  },
 });
