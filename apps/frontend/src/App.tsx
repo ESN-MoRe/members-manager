@@ -143,12 +143,15 @@ export default function App() {
     }
   }
 
-  const handleReset = () => {
-    if (
-      window.confirm('Sei sicuro? Perderai tutte le modifiche non salvate.')
-    ) {
-      startStreaming();
+  const handleRefreshFromLive = () => {
+    // Se abbiamo già dei dati (sections non è null), chiediamo conferma
+    if (sections) {
+      const confirmDiscard = window.confirm(
+        'Attenzione: perderei tutte le modifiche fatte finora. Vuoi scaricare nuovamente i dati originali dal sito "live"?',
+      );
+      if (!confirmDiscard) return;
     }
+    startStreaming();
   };
 
   // Modified function to switch to Preview Mode
@@ -385,34 +388,31 @@ export default function App() {
             <>
               <button
                 type="button"
-                onClick={handleReset}
+                onClick={handleRefreshFromLive}
                 disabled={isStreaming || loading}
-                className="text-red-500 scale-90 hover:bg-red-50 border border-transparent rounded-lg px-3.5 py-2 flex items-center gap-2 font-semibold text-sm cursor-pointer transition-colors"
+                className="group bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg px-3.5 py-2 flex items-center gap-2 font-semibold text-sm cursor-pointer transition-all"
+                title="Elimina le modificle locali e scarica i dati attuali da Drupal"
               >
-                <RotateCcw size={16} /> Reset
+                {isStreaming ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin" />
+                    <span>Sincronizzazione...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw
+                      size={16}
+                      className="text-gray-400 group-hover:rotate-180 transition-transform duration-500"
+                    />
+                    <span>Reimposta come da sito</span>
+                  </>
+                )}
               </button>
 
               <button
                 type="button"
-                onClick={startStreaming}
-                disabled={isStreaming}
-                className="bg-gray-100 text-gray-700 border border-gray-300 rounded-lg px-3.5 py-2 flex items-center gap-2 font-semibold text-sm cursor-pointer"
-              >
-                {isStreaming ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
-                    Syncando...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw size={16} /> Synca
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 rounded-lg px-6 py-2 font-bold text-sm cursor-pointer transition-colors"
-                onClick={handleGoToPreview} // UPDATED
+                className="bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 rounded-lg px-6 py-2 font-bold text-sm cursor-pointer transition-colors shadow-sm"
+                onClick={handleGoToPreview}
               >
                 Continua <ArrowRight size={18} />
               </button>
