@@ -103,6 +103,8 @@ Dalla root del progetto:
 Il progetto utilizza **Biome** per garantire uno standard di codice elevato e prestazioni di linting istantanee.
 Le regole sono configurate per supportare i **Decorators** di NestJS e le nuove API di **React 19**.
 
+Inoltre, il progetto integra [Husky](https://typicode.github.io/husky/) per eseguire controlli automatici nel pre-commit, verificando che il codice sia formattato e lintato correttamente prima di ogni commit.
+
 ---
 
 ## Licenza
