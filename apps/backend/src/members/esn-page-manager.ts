@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { Logger } from '@nestjs/common';
 import { JSDOM } from 'jsdom';
 
 // --- CONFIGURAZIONE ---
@@ -95,7 +96,10 @@ export class ESNPageManager {
   private dom: JSDOM;
   private document: Document;
 
-  constructor(htmlContent: string) {
+  constructor(
+    htmlContent: string,
+    private readonly logger: Logger,
+  ) {
     this.dom = new JSDOM(htmlContent);
     this.document = this.dom.window.document;
   }
@@ -142,7 +146,7 @@ export class ESNPageManager {
       badge.textContent = `Board ${newYear}`;
     });
 
-    console.log(`✅ Anno aggiornato a: ${newYear}`);
+    this.logger.log(`✅ Anno aggiornato a: ${newYear}`);
   }
 
   /**
@@ -190,11 +194,11 @@ export class ESNPageManager {
         // non uso { section: existingSection } perché spesso uno vuole spostare
         // un membro da una sezione all'altra, quindi va prima tolto del tutto
         this.removeMember(data.name);
-        console.log(
+        this.logger.log(
           `🔄 Membro '${data.name}' rimosso da '${existingSection}' per sostituzione.`,
         );
       } else {
-        console.warn(
+        this.logger.warn(
           `⚠️ WARNING: Il membro '${data.name}' è già presente nella sezione '${existingSection}'. Operazione annullata per evitare duplicati.`,
         );
         return;
@@ -262,11 +266,11 @@ export class ESNPageManager {
       if (targetArticle) {
         targetArticle.insertAdjacentHTML('afterend', cardHTML);
         inserted = true;
-        console.log(
+        this.logger.log(
           `✅ Aggiunto membro: ${data.name} in ${type} (dopo ${afterMemberName}, Ruolo: ${displayRole})`,
         );
       } else {
-        console.warn(
+        this.logger.warn(
           `⚠️ Target '${afterMemberName}' non trovato in ${type}. Aggiungo in ${position === 'end' ? 'fondo' : 'cima'}.`,
         );
       }
@@ -276,7 +280,7 @@ export class ESNPageManager {
     if (!inserted) {
       const insertPosition = position === 'end' ? 'beforeend' : 'afterbegin';
       grid.insertAdjacentHTML(insertPosition, cardHTML);
-      console.log(
+      this.logger.log(
         `✅ Aggiunto membro: ${data.name} in ${type} (${position === 'end' ? 'in fondo' : 'in cima'}, Ruolo: ${displayRole})`,
       );
     }
@@ -310,7 +314,7 @@ export class ESNPageManager {
       ) {
         article.remove();
         found = true;
-        console.log(`🗑️ Rimosso membro: ${name} (da ${contextName})`);
+        this.logger.log(`🗑️ Rimosso membro: ${name} (da ${contextName})`);
       }
     });
 

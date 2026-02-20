@@ -14,7 +14,7 @@ import { MembersModule } from './members/members.module';
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'), // Serve files from /public
-      renderPath: '/*path',
+      // renderPath: '/*path',
       exclude: ['/v1{/*path}'], // Don't block API routes (note: new syntax for wildcard)
     }),
     MembersModule,

@@ -5,6 +5,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Post,
   UploadedFiles,
   UseInterceptors,
@@ -33,6 +34,8 @@ const storage = diskStorage({
 
 @Controller('members')
 export class MembersController {
+  private readonly logger = new Logger(MembersController.name);
+
   constructor(
     private readonly membersService: MembersService,
     private readonly drupalService: DrupalContentService,
@@ -111,7 +114,7 @@ export class MembersController {
     const results = await this.drupalImageService.uploadImages(
       filesToUpload,
       (msg) => {
-        console.log(`[Deploy] ${msg}`);
+        this.logger.log(`[Deploy] ${msg}`);
       },
     );
 
@@ -129,7 +132,7 @@ export class MembersController {
     // Call the puppeteer service
     // We can define a simple log callback to see progress in console
     const results = await this.drupalImageService.uploadImages(files, (msg) => {
-      console.log(`[Upload Job] ${msg}`);
+      this.logger.log(`[Upload Job] ${msg}`);
     });
 
     // Clean up: delete uploaded files after processing
@@ -137,7 +140,7 @@ export class MembersController {
       try {
         await unlink(file.path);
       } catch (err) {
-        console.warn(`Failed to delete ${file.path}:`, err);
+        this.logger.warn(`Failed to delete ${file.path}:`, err);
       }
     }
 

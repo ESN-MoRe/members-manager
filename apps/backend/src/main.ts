@@ -1,4 +1,4 @@
-import { VersioningType } from '@nestjs/common';
+import { ConsoleLogger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { json, urlencoded } from 'express';
@@ -6,7 +6,13 @@ import basicAuth from 'express-basic-auth';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: new ConsoleLogger({
+      // json: true,
+      colors: true,
+      timestamp: true,
+    }),
+  });
 
   // --- CONFIGURAZIONE BASIC AUTH ---
   // Prendi le credenziali dalle variabili d'ambiente (o usa fallback di default)
@@ -31,12 +37,13 @@ async function bootstrap() {
     }),
   );
 
+  app.setGlobalPrefix('v1', {
+    // Escludiamo la rotta base per non rompere il caricamento del frontend
+    exclude: ['/'],
+  });
+
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ extended: true, limit: '50mb' }));
-
-  app.enableVersioning({
-    type: VersioningType.URI,
-  });
 
   await app.listen(process.env.PORT ?? 3000, () => {
     console.log(`Server is running on port ${process.env.PORT ?? 3000}`);

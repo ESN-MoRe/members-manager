@@ -90,7 +90,7 @@ export default function WelcomeModal() {
               onClick={handleClose}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200 cursor-pointer"
             >
-              let's goski <ArrowRight size={18} />
+              let's go⛷️ <ArrowRight size={18} />
             </button>
 
             <label className="flex items-center gap-2 cursor-pointer self-center">
