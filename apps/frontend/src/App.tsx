@@ -329,7 +329,7 @@ export default function App() {
           />
           <div className="flex flex-col">
             <span className="font-bold text-sm text-gray-900 leading-none">
-              Manager membri
+              Members Manager
             </span>
             <div className="flex items-center gap-2 mt-1">
               <button
