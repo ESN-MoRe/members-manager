@@ -1,3 +1,5 @@
+import { existsSync, mkdirSync } from 'node:fs';
+import { unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   Body,
@@ -14,9 +16,15 @@ import { DrupalImageService } from '../drupal/drupal-image.service';
 import { MemberData } from './esn-page-manager';
 import { MembersService } from './members.service';
 
+// Assicuriamoci che la cartella esista all'avvio del file (opzionale ma utile)
+const uploadDir = './uploads';
+if (!existsSync(uploadDir)) {
+  mkdirSync(uploadDir);
+}
+
 // Multer config for images
 const storage = diskStorage({
-  destination: './public/members-img',
+  destination: uploadDir, // <-- CAMBIATO: fuori da public
   filename: (_req, file, cb) => {
     // Keep original name for consistency with Drupal upload logic
     cb(null, file.originalname);
@@ -96,7 +104,7 @@ export class MembersController {
     // Construct file objects pointing to the local disk
     const filesToUpload = filenames.map((name) => ({
       originalname: name,
-      path: join(process.cwd(), 'public', 'members-img', name),
+      path: join(process.cwd(), 'uploads', name), // <-- CAMBIATO: punta a /uploads
     }));
 
     // Reuse the logic!
@@ -123,6 +131,15 @@ export class MembersController {
     const results = await this.drupalImageService.uploadImages(files, (msg) => {
       console.log(`[Upload Job] ${msg}`);
     });
+
+    // Clean up: delete uploaded files after processing
+    for (const file of files) {
+      try {
+        await unlink(file.path);
+      } catch (err) {
+        console.warn(`Failed to delete ${file.path}:`, err);
+      }
+    }
 
     return {
       message: 'Upload process completed',
