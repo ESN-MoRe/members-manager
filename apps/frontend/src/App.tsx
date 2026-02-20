@@ -2,7 +2,6 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle,
-  Download,
   ExternalLink,
   FileDown,
   RefreshCw,
@@ -13,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import DiffViewer from './components/DiffViewer';
 import ImageSyncManager from './components/ImageSyncManager';
 import MemberModal from './components/MemberModal';
+import PublishModal from './components/PublishModal';
 import WelcomeModal from './components/WelcomeModal';
 import { SECTION_COLORS, SECTION_KEYS } from './constants';
 import SectionColumn from './SectionColumn';
@@ -33,7 +33,6 @@ export default function App() {
   const [sections, setSections] = useState<SectionsState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [_saveMsg, setSaveMsg] = useState('');
   const [error, setError] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -48,6 +47,7 @@ export default function App() {
     section: SectionType;
     index: number | null;
   } | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   // Drag state
   const dragSource = useRef<{ section: SectionType; index: number } | null>(
@@ -119,42 +119,27 @@ export default function App() {
     if (!sections || !previewData) return;
 
     setSaving(true);
-    setSaveMsg('');
+    // setSaveMsg(''); // Non serve più mostrare messaggi qui
 
     try {
-      // 1. Opzionale: Salviamo comunque lo stato sul backend locale per coerenza
+      // 1. Salviamo sul backend locale (opzionale ma utile)
       const res = await fetch(`/v1/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sections),
       });
 
-      if (!res.ok)
-        throw new Error('Errore durante il salvataggio sul server locale');
-
-      // 2. Copia l'HTML negli appunti
-      await navigator.clipboard.writeText(previewData.newHtml);
-
-      // 3. Notifica l'utente e chiedi conferma per aprire Drupal
-      const message =
-        '✅ HTML copiato negli appunti!\n\n' +
-        'Ora verrai reindirizzato alla pagina di modifica di Drupal.\n' +
-        "Ti basta incollare (Ctrl+V) il codice nel campo 'Body' e salvare la pagina.\n\n" +
-        'Vuoi procedere?';
-
-      if (window.confirm(message)) {
-        window.open('https://more.esn.it/?q=node/104/edit', '_blank');
-      }
+      if (!res.ok) console.warn('Warning: Salvataggio locale fallito');
 
       setImagesUploadedPendingSave(false);
-      setSaveMsg('✅ Successo!');
+
+      // 2. Apriamo il Modal (che gestirà backup check e redirect)
+      setShowPublishModal(true);
     } catch (err) {
       console.error(err);
-      alert("Errore durante l'operazione di salvataggio o copia.");
-      setSaveMsg('❌ Errore');
+      alert('Errore generico durante il salvataggio.');
     } finally {
       setSaving(false);
-      setTimeout(() => setSaveMsg(''), 3000);
     }
   }
 
@@ -208,11 +193,11 @@ export default function App() {
     setHasBackedUp(true);
   };
 
-  const handleDownloadNew = () => {
-    if (!previewData) return;
-    const date = new Date().toISOString().split('T')[0];
-    downloadHtmlFile(`new_esn_members_${date}.html`, previewData.newHtml);
-  };
+  // const handleDownloadNew = () => {
+  //   if (!previewData) return;
+  //   const date = new Date().toISOString().split('T')[0];
+  //   downloadHtmlFile(`new_esn_members_${date}.html`, previewData.newHtml);
+  // };
 
   // --- NUOVA FUNZIONE PER L'ANTEPRIMA LIVE ---
   const handleOpenLivePreview = () => {
@@ -514,13 +499,13 @@ export default function App() {
                   </div>
                   <div className="flex-1">
                     <h2 className="text-lg font-bold text-gray-900 mb-1">
-                      Zona di sicurezza (Backup)
+                      Backup
                     </h2>
                     <p className="text-gray-700 text-sm mb-4 leading-relaxed">
                       Prima di caricare qualsiasi cosa su Drupal/Satellite,{' '}
                       <strong>DEVI scaricare il backup</strong> dell'HTML
-                      attuale. Se qualcosa va storto, senza questo file{' '}
-                      <em>sono cazzi amari</em> per ripristinare il sito.
+                      attuale. Se qualcosa va storto, senza questo file sono
+                      cazzi per ripristinare il sito.
                     </p>
 
                     <div className="flex flex-wrap gap-4 items-center">
@@ -541,37 +526,8 @@ export default function App() {
                         )}
                         {hasBackedUp
                           ? 'Backup scaricato'
-                          : '1. SCARICA BACKUP (Obbligatorio)'}
+                          : 'SCARICA BACKUP (Obbligatorio)'}
                       </button>
-
-                      {/* Freccia indicativa */}
-                      <div className="text-gray-400 hidden sm:block">
-                        <ArrowRight size={20} />
-                      </div>
-
-                      {/* Tasto 2: Scarica Nuovo (Bloccato finché non scarichi il vecchio) */}
-                      <div className="relative group">
-                        <button
-                          type="button"
-                          onClick={handleDownloadNew}
-                          disabled={!hasBackedUp}
-                          className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all shadow-sm ${
-                            !hasBackedUp
-                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-                          }`}
-                        >
-                          <Download size={18} />
-                          2. Scarica nuovo HTML
-                        </button>
-
-                        {/* Tooltip per spiegare perché è disabilitato */}
-                        {!hasBackedUp && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                            Scarica prima il backup!
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -641,6 +597,14 @@ export default function App() {
       )}
 
       {/* Modal */}
+      <PublishModal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        hasBackedUp={hasBackedUp}
+        onDownloadBackup={handleDownloadOld}
+        newHtml={previewData?.newHtml || ''}
+      />
+
       {editModal && (
         <MemberModal
           member={modalMember ?? null}
