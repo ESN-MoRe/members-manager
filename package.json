@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "start": "pnpm --filter backend start:prod",
     "lint": "turbo lint",
     "check": "biome check",
     "check:write": "biome check --write",
