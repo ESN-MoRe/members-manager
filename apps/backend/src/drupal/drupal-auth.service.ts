@@ -10,7 +10,6 @@ export class DrupalAuthService implements OnModuleInit {
   private readonly CACHE_TTL = 1000 * 60 * 60 * 2; // 2 hours in milliseconds
   private drupalUsername: string;
   private drupalPassword: string;
-  private puppeteerExecutablePath: string | undefined;
   private refreshPromise: Promise<string> | null = null;
 
   constructor(
@@ -22,9 +21,6 @@ export class DrupalAuthService implements OnModuleInit {
     // Check required environment variables at startup
     const drupalUsername = this.configService.get('DRUPAL_USERNAME');
     const drupalPassword = this.configService.get('DRUPAL_PASSWORD');
-    this.puppeteerExecutablePath = this.configService.get(
-      'PUPPETEER_EXECUTABLE_PATH',
-    );
 
     if (!drupalUsername || !drupalPassword) {
       throw new Error(
@@ -79,8 +75,9 @@ export class DrupalAuthService implements OnModuleInit {
   ): Promise<string> {
     onLog?.('Launching browser...');
     const browser = await puppeteer.launch({
-      headless: this.configService.get('NODE_ENV') !== 'development', // Headless in production, non-headless in development for easier debugging
-      executablePath: this.puppeteerExecutablePath,
+      // Headless in production, non-headless in dev for easier debugging
+      headless: this.configService.get('NODE_ENV') !== 'development',
+      executablePath: this.configService.get('PUPPETEER_EXECUTABLE_PATH'),
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
 
