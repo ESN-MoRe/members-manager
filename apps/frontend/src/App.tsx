@@ -85,6 +85,14 @@ export default function App() {
   // Log container ref for auto-scroll
   const logBodyRef = useRef<HTMLDivElement>(null);
 
+  // Snapshot dei dati come erano all'ultimo caricamento/salvataggio: serve a
+  // capire se ci sono modifiche non salvate.
+  const savedSnapshot = useRef<string | null>(null);
+  const hasUnsavedChanges =
+    sections !== null &&
+    (imagesUploadedPendingSave ||
+      JSON.stringify(sections) !== savedSnapshot.current);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: necessary to auto-scroll on new logs
   useEffect(() => {
     // Scroll log container to bottom when logs change
@@ -107,6 +115,7 @@ export default function App() {
         setLogs((prev) => [...prev, data.message]);
       } else if (data.type === 'result') {
         const jsonState = parseDrupalHtml(data.content);
+        savedSnapshot.current = JSON.stringify(jsonState);
         setSections(jsonState);
         setLoading(false);
         setIsStreaming(false);
@@ -130,18 +139,19 @@ export default function App() {
     startStreaming();
   }, []);
 
-  // Intercetta la chiusura della pagina
+  // Intercetta chiusura/ricaricamento della pagina se ci sono modifiche
+  // non salvate, per evitare di perdere il lavoro per errore.
   useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (imagesUploadedPendingSave) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
+      e.preventDefault();
+      e.returnValue = '';
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [imagesUploadedPendingSave]);
+  }, [hasUnsavedChanges]);
 
   function handleSave() {
     if (!sections || !previewData) return;
@@ -201,6 +211,7 @@ export default function App() {
         body: JSON.stringify(sections),
       });
       if (!res.ok) console.warn('Warning: Salvataggio locale fallito');
+      else savedSnapshot.current = JSON.stringify(sections);
 
       setImagesUploadedPendingSave(false);
       setShowPublishModal(true);
